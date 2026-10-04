@@ -1,0 +1,2239 @@
+<!DOCTYPE html>
+<html lang="de">
+	<head>
+		<meta charset="UTF-8" />
+		<meta
+			name="viewport"
+			content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+		/>
+		<!-- Meta-Tags für App-Feeling auf iOS (Zum Home-Bildschirm hinzufügen) -->
+		<meta name="apple-mobile-web-app-capable" content="yes" />
+		<meta name="mobile-web-app-capable" content="yes" />
+		<meta name="apple-mobile-web-app-title" content="Lese-Meister" />
+		<meta name="theme-color" content="#87CEEB" />
+		<meta
+			name="apple-mobile-web-app-status-bar-style"
+			content="black-translucent"
+		/>
+		<title>Lese-Meister</title>
+		<style>
+			body {
+			    font-family: 'Comic Sans MS', 'Chalkboard SE', 'Arial', sans-serif;
+			    background-color: #87CEEB;
+			    display: flex;
+			    justify-content: center;
+			    align-items: center;
+			    min-height: 100vh;
+			    min-height: 100dvh; /* iPhone: sichtbare Höhe ohne Adressleiste */
+			    margin: 0;
+			    /* Abstand zu Notch / Home-Balken, wenn als App vom Home-Bildschirm gestartet */
+			    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+			    box-sizing: border-box;
+			    text-align: center;
+			    color: #333;
+			    -webkit-user-select: none;
+			    user-select: none;
+			    -webkit-touch-callout: none;
+			    overflow: hidden;
+			}
+			button {
+			    font-family: inherit;
+			    -webkit-tap-highlight-color: transparent;
+			}
+			/* Verhindert Doppeltipp-Zoom auf dem iPhone, wenn schnell hintereinander getippt wird */
+			button, .container, .wheel, .wheel-item { touch-action: manipulation; }
+			.container {
+			    background-color: white;
+			    padding: 20px;
+			    border-radius: 25px;
+			    box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+			    width: 90%;
+			    max-width: 400px;
+			    max-height: 95vh;
+			    max-height: calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+			    overflow-y: auto;
+			    -webkit-overflow-scrolling: touch;
+			    position: relative;
+			    z-index: 10;
+			    transition: background-color 0.3s;
+			    box-sizing: border-box;
+			}
+			h1 { color: #FF8C00; font-size: 2.2em; margin-top: 10px; margin-bottom: 5px;}
+			#screen-start h1 { margin-top: 20px; }
+			.section-label { font-size: 1em; color: #555; margin: 12px 0 5px; }
+
+			#word-display {
+			    margin: 15px 0;
+			    min-height: 120px;
+			    display: flex;
+			    align-items: center;
+			    justify-content: center;
+			    overflow: hidden;
+			}
+			/* Das Wort selbst: nie mitten im Wort umbrechen, stattdessen wird die Schrift verkleinert */
+			#word-text {
+			    white-space: nowrap;
+			    line-height: 1.2;
+			    display: inline-block;
+			}
+			.btn-container {
+			    display: flex;
+			    justify-content: space-around;
+			    margin-top: 20px;
+			}
+			.action-btn {
+			    font-size: 2.5em;
+			    border: 4px solid rgba(255,255,255,0.3);
+			    border-radius: 50%;
+			    width: 90px;
+			    height: 90px;
+			    cursor: pointer;
+			    transition: transform 0.1s, box-shadow 0.1s;
+			    display: flex;
+			    align-items: center;
+			    justify-content: center;
+			    box-shadow: 0 8px 15px rgba(0,0,0,0.2);
+			}
+			.action-btn:active {
+			    transform: scale(0.9) translateY(4px);
+			    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+			}
+			#btn-correct { background-color: #27ae60; }
+			#btn-wrong { background-color: #e74c3c; }
+
+			.main-btn {
+			    font-size: 1.2em;
+			    background-color: #FF8C00;
+			    color: white;
+			    border: none;
+			    border-radius: 12px;
+			    padding: 15px 20px;
+			    margin: 15px auto;
+			    display: block;
+			    width: 100%;
+			    cursor: pointer;
+			    font-weight: bold;
+			    box-shadow: 0 5px 10px rgba(255, 140, 0, 0.3);
+			    transition: transform 0.1s;
+			}
+			.main-btn:active { transform: scale(0.95); }
+			.start-btn { font-size: 1.5em; padding: 18px; margin-bottom: 10px; }
+			.knack-btn {
+			    background-color: #8e44ad;
+			    box-shadow: 0 5px 10px rgba(142, 68, 173, 0.3);
+			    margin-top: 0;
+			}
+			.main-btn:disabled {
+			    background-color: #bdc3c7;
+			    box-shadow: none;
+			    cursor: default;
+			    transform: none;
+			}
+			.settings-btn {
+			    position: absolute;
+			    top: 15px;
+			    right: 15px;
+			    font-size: 1.5em;
+			    background: none;
+			    border: none;
+			    cursor: pointer;
+			}
+			.sound-btn { right: auto; left: 15px; }
+
+			/* Schwierigkeitsgrad */
+			.difficulty-container {
+			    display: flex;
+			    justify-content: space-between;
+			    margin: 5px 0 10px;
+			    background: #f1f8ff;
+			    border-radius: 12px;
+			    padding: 5px;
+			}
+			.diff-btn {
+			    flex: 1;
+			    padding: 10px 5px;
+			    border: none;
+			    background: none;
+			    font-size: 1em;
+			    font-weight: bold;
+			    color: #666;
+			    cursor: pointer;
+			    border-radius: 8px;
+			    transition: all 0.2s;
+			}
+			.diff-btn.active {
+			    background-color: #3498db;
+			    color: white;
+			    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+			}
+			.level-hint { font-size: 0.85em; color: #777; margin: -4px 0 6px; min-height: 1.2em; }
+
+			/* Spielauswahl: Sichtwörter oder Silben */
+			.game-switch { display: flex; gap: 10px; margin: 6px 0 4px; }
+			.game-btn {
+			    flex: 1;
+			    padding: 12px 6px;
+			    border: 3px solid #e6e9ed;
+			    border-radius: 14px;
+			    background: white;
+			    font-size: 1.15em;
+			    font-weight: bold;
+			    color: #555;
+			    cursor: pointer;
+			    transition: all 0.2s;
+			}
+			.game-btn.active {
+			    border-color: #FF8C00;
+			    background: #fff4e6;
+			    color: #2c3e50;
+			    box-shadow: 0 3px 8px rgba(255, 140, 0, 0.25);
+			}
+			.game-btn:active { transform: scale(0.97); }
+			.game-desc { font-size: 0.85em; color: #777; margin: 4px 0 2px; }
+
+			/* Silben: abwechselnd blau und rot (erste Silbe blau) */
+			.syl-blue { color: #1565C0; }
+			.syl-red { color: #D32F2F; }
+			/* Bei Richtig/Falsch färbt sich das ganze Wort grün bzw. rot */
+			.correct-anim .syl, .wrong-anim .syl { color: inherit !important; }
+
+			/* Zeit-Rad */
+			.timer-row {
+			    display: flex;
+			    align-items: center;
+			    justify-content: space-between;
+			    gap: 12px;
+			    background: #f1f8ff;
+			    border-radius: 12px;
+			    padding: 8px 12px;
+			    margin: 10px 0;
+			}
+			.timer-text { text-align: left; }
+			.timer-text strong { display: block; color: #2c3e50; font-size: 1.05em; }
+			.timer-text small { display: block; color: #777; font-size: 0.8em; margin-top: 4px; }
+			.wheel-wrap {
+			    position: relative;
+			    width: 96px;
+			    height: 120px;
+			    flex-shrink: 0;
+			    border-radius: 12px;
+			    background: white;
+			    box-shadow: inset 0 2px 6px rgba(0,0,0,0.15);
+			    overflow: hidden;
+			}
+			.wheel {
+			    height: 100%;
+			    overflow-y: scroll;
+			    scroll-snap-type: y mandatory;
+			    overscroll-behavior: contain;
+			    -webkit-overflow-scrolling: touch;
+			    scrollbar-width: none;
+			    perspective: 300px;
+			}
+			.wheel::-webkit-scrollbar { display: none; }
+			.wheel-spacer { height: 40px; }
+			.wheel-item {
+			    height: 40px;
+			    line-height: 40px;
+			    scroll-snap-align: center;
+			    font-size: 1.3em;
+			    font-weight: bold;
+			    color: #2c3e50;
+			    cursor: pointer;
+			}
+			.wheel-item.selected { color: #FF8C00; }
+			.wheel-band {
+			    position: absolute;
+			    left: 6px; right: 6px;
+			    top: 40px; height: 40px;
+			    border-top: 2px solid #FF8C00;
+			    border-bottom: 2px solid #FF8C00;
+			    box-sizing: border-box;
+			    pointer-events: none;
+			}
+			.wheel-wrap::before, .wheel-wrap::after {
+			    content: "";
+			    position: absolute;
+			    left: 0; right: 0;
+			    height: 30px;
+			    pointer-events: none;
+			    z-index: 2;
+			}
+			.wheel-wrap::before { top: 0; background: linear-gradient(white, rgba(255,255,255,0)); }
+			.wheel-wrap::after { bottom: 0; background: linear-gradient(rgba(255,255,255,0), white); }
+
+			/* Weltraum-Reise */
+			.space-panel {
+			    background-color: #1d2550;
+			    border-radius: 16px;
+			    padding: 10px 12px 12px;
+			    margin: 12px 0;
+			    color: white;
+			}
+			.space-head {
+			    display: flex;
+			    justify-content: space-between;
+			    align-items: center;
+			    font-weight: bold;
+			    font-size: 1em;
+			}
+			.space-gain { color: #FFB347; }
+			.space-trips { font-size: 0.8em; color: #f1c40f; }
+			.space-svg { width: 100%; height: auto; display: block; margin: 2px 0; }
+			.space-info {
+			    display: flex;
+			    justify-content: space-between;
+			    font-size: 0.85em;
+			    color: #dfe6ff;
+			}
+			.fuel-track {
+			    height: 10px;
+			    background: rgba(255,255,255,0.2);
+			    border-radius: 5px;
+			    overflow: hidden;
+			    margin-top: 6px;
+			}
+			.fuel-bar {
+			    height: 100%;
+			    width: 0%;
+			    background-color: #FF8C00;
+			    border-radius: 5px;
+			    transition: width 1.2s ease;
+			}
+			.rocket { transition: transform 1.6s cubic-bezier(0.4, 0, 0.2, 1); }
+			.trail {
+			    transform-box: fill-box;
+			    transform-origin: left center;
+			    transition: transform 1.6s cubic-bezier(0.4, 0, 0.2, 1);
+			}
+			.planet { transition: opacity 0.6s; }
+			.no-anim, .no-anim * { transition: none !important; }
+			.arrival-banner {
+			    background: #fff3cd;
+			    border: 2px solid #f1c40f;
+			    border-radius: 12px;
+			    padding: 10px;
+			    margin: 10px 0;
+			    color: #6b4f00;
+			    animation: popIn 0.5s ease;
+			}
+			@keyframes popIn {
+			    0% { transform: scale(0.7); opacity: 0; }
+			    100% { transform: scale(1); opacity: 1; }
+			}
+
+			/* Spielbildschirm */
+			.game-topbar {
+			    display: flex;
+			    justify-content: space-between;
+			    align-items: center;
+			    margin-bottom: 8px;
+			}
+			.pill-btn {
+			    background: #ecf0f1;
+			    border: none;
+			    border-radius: 20px;
+			    padding: 8px 14px;
+			    font-size: 1em;
+			    font-weight: bold;
+			    color: #2c3e50;
+			    cursor: pointer;
+			}
+			.pill-btn:active { transform: scale(0.95); }
+			.pill-btn:disabled { opacity: 0.35; cursor: default; transform: none; }
+			.mode-label { font-size: 0.9em; color: #8e44ad; font-weight: bold; min-height: 1.2em; }
+
+			.progress-container {
+			    width: 100%;
+			    background-color: #eee;
+			    border-radius: 15px;
+			    height: 25px;
+			    margin: 12px 0;
+			    overflow: hidden;
+			    box-shadow: inset 0 2px 5px rgba(0,0,0,0.1);
+			    position: relative;
+			}
+			#progress-bar {
+			    height: 100%;
+			    background: linear-gradient(90deg, #4CAF50, #8BC34A);
+			    width: 0%;
+			    transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+			    border-radius: 15px;
+			}
+			#progress-text {
+			    position: absolute;
+			    top: 0; left: 0;
+			    width: 100%; height: 100%;
+			    display: flex;
+			    align-items: center;
+			    justify-content: center;
+			    font-size: 0.9em;
+			    font-weight: bold;
+			    color: #333;
+			    text-shadow: 1px 1px 2px rgba(255,255,255,0.8);
+			}
+			.stats { font-size: 1.1em; color: #666; font-weight: bold; }
+
+			.timer-wrap {
+			    display: flex;
+			    align-items: center;
+			    gap: 8px;
+			}
+			#timer-label { min-width: 52px; text-align: left; font-weight: bold; color: #555; }
+			.timer-track {
+			    flex: 1;
+			    height: 14px;
+			    background: #eee;
+			    border-radius: 7px;
+			    overflow: hidden;
+			}
+			#timer-bar { height: 100%; width: 100%; background-color: #27ae60; border-radius: 7px; }
+			.timeout-msg {
+			    position: absolute;
+			    top: 42%;
+			    left: 50%;
+			    transform: translate(-50%, -50%) scale(0.6);
+			    background: #e74c3c;
+			    color: white;
+			    padding: 8px 18px;
+			    border-radius: 20px;
+			    font-weight: bold;
+			    font-size: 1.2em;
+			    opacity: 0;
+			    pointer-events: none;
+			    z-index: 5;
+			    transition: opacity 0.2s, transform 0.2s;
+			}
+			.timeout-msg.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+
+			@keyframes pop {
+			    0% { transform: scale(1); }
+			    50% { transform: scale(1.3); color: #27ae60; text-shadow: 0 0 10px rgba(39, 174, 96, 0.5); }
+			    100% { transform: scale(1); color: #27ae60; }
+			}
+			@keyframes shake {
+			    0%, 100% { transform: translateX(0); }
+			    20% { transform: translateX(-15px); color: #e74c3c; }
+			    40% { transform: translateX(15px); color: #e74c3c; }
+			    60% { transform: translateX(-15px); color: #e74c3c; }
+			    80% { transform: translateX(15px); color: #e74c3c; }
+			}
+			@keyframes flashGreen { 0%, 100% { background-color: white; } 50% { background-color: #d4efdf; } }
+			@keyframes flashRed { 0%, 100% { background-color: white; } 50% { background-color: #fadbd8; } }
+
+			.correct-anim { animation: pop 0.6s ease forwards; }
+			.wrong-anim { animation: shake 0.5s ease forwards; }
+			.flash-correct { animation: flashGreen 0.6s ease; }
+			.flash-wrong { animation: flashRed 0.6s ease; }
+
+			/* Fahrzeug Animationen */
+			.vehicle-anim {
+			    position: fixed;
+			    font-size: 6rem;
+			    z-index: 100;
+			    pointer-events: none;
+			    filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.3));
+			}
+			@keyframes driveCar {
+			    /* Das Rennwagen-Emoji schaut nach links, also fährt er von rechts nach links */
+			    0% { left: 120vw; top: 70vh; }
+			    100% { left: -20vw; top: 70vh; }
+			}
+			@keyframes flyJet {
+			    0% { left: -20vw; top: 80vh; transform: rotate(15deg); }
+			    100% { left: 120vw; top: 20vh; transform: rotate(15deg); }
+			}
+			@keyframes launchRocket {
+			    /* Das Raketen-Emoji zeigt schräg nach rechts oben, -45° richtet es senkrecht aus */
+			    0% { left: 50vw; top: 110vh; transform: translateX(-50%) rotate(-45deg); }
+			    100% { left: 50vw; top: -30vh; transform: translateX(-50%) rotate(-45deg); }
+			}
+
+			.confetti {
+			    position: fixed;
+			    top: 0;
+			    width: 10px;
+			    height: 10px;
+			    background-color: #f00;
+			    z-index: 1;
+			    animation: fall linear both;
+			}
+			@keyframes fall {
+			    0% { transform: translateY(-10vh) rotate(0deg); opacity: 1; }
+			    100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+			}
+
+			/* Endbildschirm */
+			.round-words {
+			    font-size: 0.95em;
+			    color: #444;
+			    background: #f7f0fb;
+			    border-radius: 10px;
+			    padding: 8px 10px;
+			}
+			.history-container {
+			    background-color: #f1f8ff;
+			    border-radius: 10px;
+			    padding: 10px;
+			    margin: 15px 0;
+			    border: 1px dashed #b3d4fc;
+			}
+			.history-container h3 { margin: 0 0 4px; font-size: 1.1em; color: #2c3e50; }
+			.rank-message { margin: 0 0 8px; font-weight: bold; color: #FF8C00; }
+			.board-scroll { max-height: 230px; overflow-y: auto; }
+			.board-table { width: 100%; border-collapse: collapse; font-size: 0.9em; }
+			.board-table th {
+			    color: #2c3e50;
+			    font-size: 0.85em;
+			    padding: 4px;
+			    border-bottom: 2px solid #b3d4fc;
+			}
+			.board-table td { padding: 6px 4px; border-bottom: 1px solid #ddd; color: #444; }
+			.board-table tr.current td { background: #fff3cd; font-weight: bold; color: #2c3e50; }
+			.board-table tr.gap td { border: none; color: #999; padding: 2px; }
+			.end-buttons { display: flex; gap: 10px; }
+			.end-buttons .main-btn { margin: 10px 0 0; padding: 15px 10px; }
+
+			/* Einstellungen */
+			textarea {
+			    width: 100%; height: 160px; font-size: 1em; font-family: inherit;
+			    padding: 10px; box-sizing: border-box; border: 2px solid #ccc;
+			    border-radius: 10px; margin-bottom: 10px; resize: none;
+			    -webkit-user-select: text; user-select: text;
+			}
+			.word-count { font-size: 0.85em; color: #777; text-align: left; margin: -5px 0 5px; }
+			.settings-error { color: #c0392b; font-weight: bold; font-size: 0.9em; margin: 5px 0; }
+			.settings-section {
+			    text-align: left;
+			    background: #f7f9fb;
+			    border-radius: 12px;
+			    padding: 10px 12px;
+			    margin: 12px 0;
+			}
+			.settings-section h3 { margin: 0 0 6px; font-size: 1em; color: #2c3e50; }
+			.settings-section small { color: #777; }
+			.knack-count { color: #999; font-size: 0.85em; }
+			.small-btn {
+			    display: block;
+			    width: 100%;
+			    margin: 6px 0;
+			    padding: 10px;
+			    border: none;
+			    border-radius: 10px;
+			    background: #ecf0f1;
+			    color: #c0392b;
+			    font-weight: bold;
+			    font-size: 0.95em;
+			    cursor: pointer;
+			}
+			.small-btn:active { transform: scale(0.97); }
+
+			/* Bestätigungs-Fenster */
+			.modal-backdrop {
+			    position: fixed;
+			    top: 0; left: 0; right: 0; bottom: 0;
+			    background: rgba(0,0,0,0.45);
+			    display: flex;
+			    align-items: center;
+			    justify-content: center;
+			    z-index: 300;
+			}
+			.modal {
+			    background: white;
+			    border-radius: 20px;
+			    padding: 20px;
+			    width: 80%;
+			    max-width: 320px;
+			    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+			}
+			.modal p { font-size: 1.15em; font-weight: bold; color: #2c3e50; margin: 5px 0 18px; }
+			.modal-buttons { display: flex; gap: 10px; }
+			.modal-btn {
+			    flex: 1;
+			    border: none;
+			    border-radius: 12px;
+			    padding: 12px 8px;
+			    font-size: 1em;
+			    font-weight: bold;
+			    cursor: pointer;
+			}
+			.modal-btn.no { background: #27ae60; color: white; }
+			.modal-btn.yes { background: #ecf0f1; color: #c0392b; }
+
+			.hidden { display: none !important; }
+
+			@media (prefers-reduced-motion: reduce) {
+			    .rocket, .trail, .fuel-bar { transition-duration: 0.01s !important; }
+			}
+		</style>
+	</head>
+	<body>
+		<!-- STARTBILDSCHIRM -->
+		<div class="container" id="screen-start">
+			<button
+				class="settings-btn sound-btn"
+				id="btn-sound"
+				onclick="toggleSound()"
+				aria-label="Töne aus"
+			>
+				🔊
+			</button>
+			<button
+				class="settings-btn"
+				onclick="openSettings()"
+				aria-label="Einstellungen"
+			>
+				⚙️
+			</button>
+			<h1>Lese-Meister!</h1>
+
+			<div class="space-panel" id="journey-start"></div>
+
+			<p class="section-label">Was möchtest du üben?</p>
+			<div class="game-switch">
+				<button class="game-btn" id="game-sicht" onclick="setGame('sicht')">
+					👀 Sichtwörter
+				</button>
+				<button class="game-btn" id="game-silben" onclick="setGame('silben')">
+					👏 <span class="syl-blue">Sil</span><span class="syl-red">ben</span>
+				</button>
+			</div>
+			<p class="game-desc" id="game-desc"></p>
+
+			<p class="section-label">Wähle die Schwierigkeit:</p>
+			<div class="difficulty-container">
+				<button
+					class="diff-btn active"
+					id="btn-leicht"
+					onclick="setDifficulty('leicht')"
+				>
+					Leicht
+				</button>
+				<button
+					class="diff-btn"
+					id="btn-mittel"
+					onclick="setDifficulty('mittel')"
+				>
+					Mittel
+				</button>
+				<button
+					class="diff-btn"
+					id="btn-schwer"
+					onclick="setDifficulty('schwer')"
+				>
+					Schwer
+				</button>
+			</div>
+			<p class="level-hint" id="level-hint"></p>
+
+			<div class="timer-row">
+				<div class="timer-text">
+					<strong>⏱️ Zeit pro Wort</strong>
+					<small
+						>Ist die Zeit um, kommt das Wort später noch einmal
+						dran.</small
+					>
+				</div>
+				<div class="wheel-wrap">
+					<div class="wheel" id="timer-wheel"></div>
+					<div class="wheel-band"></div>
+				</div>
+			</div>
+
+			<button class="main-btn start-btn" onclick="startGame('normal')">
+				Los geht's! 🌟
+			</button>
+			<button
+				class="main-btn knack-btn"
+				id="btn-knack"
+				onclick="startGame('knack')"
+			>
+				🧠 Knackwörter üben
+			</button>
+		</div>
+
+		<!-- SPIELBILDSCHIRM -->
+		<div class="container hidden" id="screen-game">
+			<div class="game-topbar">
+				<button class="pill-btn" onclick="askBackToMenu()">
+					🏠 Menü
+				</button>
+				<button
+					class="pill-btn"
+					id="btn-undo"
+					onclick="undoLast()"
+					disabled
+				>
+					↩️ Rückgängig
+				</button>
+			</div>
+			<div class="mode-label" id="mode-label"></div>
+			<div class="stats">Versuch: <span id="attempt-count">0</span></div>
+
+			<div class="progress-container">
+				<div id="progress-bar"></div>
+				<div id="progress-text">0 / 10</div>
+			</div>
+
+			<div id="word-display"><span id="word-text">Wort</span></div>
+
+			<div class="timer-wrap hidden" id="timer-wrap">
+				<span id="timer-label">⏱️</span>
+				<div class="timer-track"><div id="timer-bar"></div></div>
+			</div>
+
+			<div class="btn-container">
+				<button
+					class="action-btn"
+					id="btn-wrong"
+					onclick="checkAnswer(false)"
+					aria-label="Falsch"
+				>
+					<svg
+						viewBox="0 0 24 24"
+						width="45"
+						height="45"
+						stroke="white"
+						stroke-width="4"
+						fill="none"
+						stroke-linecap="round"
+					>
+						<line x1="18" y1="6" x2="6" y2="18"></line>
+						<line x1="6" y1="6" x2="18" y2="18"></line>
+					</svg>
+				</button>
+				<button
+					class="action-btn"
+					id="btn-correct"
+					onclick="checkAnswer(true)"
+					aria-label="Richtig"
+				>
+					<svg
+						viewBox="0 0 24 24"
+						width="45"
+						height="45"
+						stroke="white"
+						stroke-width="4"
+						fill="none"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+					>
+						<polyline points="20 6 9 17 4 12"></polyline>
+					</svg>
+				</button>
+			</div>
+
+			<div class="timeout-msg" id="timeout-msg">⏰ Zeit um!</div>
+		</div>
+
+		<!-- ENDBILDSCHIRM -->
+		<div class="container hidden" id="screen-end">
+			<div
+				id="trophy-display"
+				style="font-size: 3.5em; margin-bottom: -5px;"
+			>
+				🏆
+			</div>
+			<h1>Klasse gemacht! 🎉</h1>
+
+			<p
+				id="end-message"
+				style="font-size: 1.1em; font-weight: bold; color: #2c3e50;"
+			></p>
+
+			<p style="font-size: 1em; color: #555;">
+				Dafür hast du
+				<span
+					id="final-attempts"
+					style="color: #FF8C00; font-size: 1.5em; font-weight: bold;"
+				></span>
+				<span id="final-attempts-word">Versuche</span><br />
+				in
+				<span
+					id="final-time"
+					style="font-weight: bold; color: #3498db;"
+				></span>
+				Sekunden gebraucht.
+			</p>
+
+			<p class="round-words" id="round-words"></p>
+
+			<div class="arrival-banner hidden" id="arrival-banner"></div>
+			<div class="space-panel" id="journey-end"></div>
+
+			<div class="history-container">
+				<h3 id="board-title">Bestenliste 📊</h3>
+				<p class="rank-message" id="rank-message"></p>
+				<div class="board-scroll">
+					<table class="board-table">
+						<thead>
+							<tr>
+								<th>Platz</th>
+								<th>Zeit</th>
+								<th>Versuche</th>
+								<th>Auszeichnung</th>
+							</tr>
+						</thead>
+						<tbody id="board-body"></tbody>
+					</table>
+				</div>
+			</div>
+
+			<div class="end-buttons">
+				<button
+					class="main-btn"
+					style="background-color: #27ae60;"
+					onclick="startGame(currentMode)"
+				>
+					🔄 Nochmal
+				</button>
+				<button
+					class="main-btn"
+					style="background-color: #95a5a6; box-shadow: none;"
+					onclick="goToMenu()"
+				>
+					🏠 Menü
+				</button>
+			</div>
+		</div>
+
+		<!-- EINSTELLUNGEN -->
+		<div class="container hidden" id="screen-settings">
+			<h2 style="color: #2c3e50; margin-top:0;" id="settings-title">Wörter anpassen ⚙️</h2>
+			<div class="difficulty-container" id="settings-tabs">
+				<button class="diff-btn" data-level="leicht" onclick="switchSettingsLevel('leicht')">Leicht</button>
+				<button class="diff-btn" data-level="mittel" onclick="switchSettingsLevel('mittel')">Mittel</button>
+				<button class="diff-btn" data-level="schwer" onclick="switchSettingsLevel('schwer')">Schwer</button>
+			</div>
+			<p style="font-size: 0.9em; text-align: left;">
+				Wörter für <strong id="settings-level">Leicht</strong>
+				(mit Komma oder neuer Zeile trennen)<span id="settings-syl-hint"
+					>.<br />Silben mit Bindestrich trennen, z. B.
+					<strong
+						><span class="syl-blue">Ba</span>-<span class="syl-red">na</span>-<span
+							class="syl-blue"
+							>ne</span
+						></strong
+					></span
+				>:
+			</p>
+			<textarea
+				id="word-input"
+				oninput="updateWordCount()"
+				autocapitalize="off"
+				autocorrect="off"
+				spellcheck="false"
+			></textarea>
+			<p class="word-count" id="word-count"></p>
+			<p class="word-count hidden" id="word-warning" style="color: #b9770e;"></p>
+			<p class="settings-error hidden" id="settings-error"></p>
+			<button
+				class="main-btn"
+				style="background-color: #4CAF50; box-shadow: none;"
+				onclick="saveSettings()"
+			>
+				Speichern & Zurück
+			</button>
+
+			<div class="settings-section">
+				<h3>🧠 Knackwörter (<span id="knack-level">Leicht</span>)</h3>
+				<p id="knack-list" style="margin: 0 0 6px;"></p>
+				<small
+					>Ein Wort ist kein Knackwort mehr, sobald es 3-mal
+					hintereinander richtig gelesen wurde.</small
+				>
+			</div>
+
+			<div class="settings-section">
+				<h3>Zurücksetzen (<span class="settings-game-name">Sichtwörter</span>)</h3>
+				<button class="small-btn" onclick="resetToDefault(this)">
+					Standard-Wörter wiederherstellen
+				</button>
+				<button class="small-btn" onclick="resetStats(this)">
+					Knackwörter zurücksetzen
+				</button>
+				<button class="small-btn" onclick="resetBoard(this)">
+					Bestenliste löschen
+				</button>
+			</div>
+
+			<div class="settings-section">
+				<h3>Für beide Spiele</h3>
+				<button class="small-btn" onclick="resetJourney(this)">
+					Weltraum-Reise neu starten
+				</button>
+			</div>
+
+			<button
+				class="main-btn"
+				style="background-color: #95a5a6; box-shadow: none;"
+				onclick="goToMenu()"
+			>
+				Zurück ohne Speichern
+			</button>
+		</div>
+
+		<!-- BESTÄTIGUNGS-FENSTER -->
+		<div class="modal-backdrop hidden" id="modal">
+			<div class="modal">
+				<p id="modal-text"></p>
+				<div class="modal-buttons">
+					<button class="modal-btn yes" id="modal-yes"></button>
+					<button class="modal-btn no" id="modal-no"></button>
+				</div>
+			</div>
+		</div>
+
+		<script>
+			// =====================================================================
+			// WORTLISTEN
+			// =====================================================================
+			// Jedes Wort steht nur in EINER Stufe. Nomen (Tiere) werden großgeschrieben.
+			const wordsConfig = {
+			    leicht: [
+			        "und", "die", "der", "das", "ist", "in", "ein", "zu", "mit", "von",
+			        "auf", "es", "so", "da", "wo", "er", "sie", "wir", "wie", "an",
+			        "man", "sich", "mir", "dir", "mich", "dich", "ihr", "als", "bei", "im",
+			        "am", "zum", "zur", "vom", "beim", "hat", "haben", "war", "bin", "sind",
+			        "wird", "mein", "dein", "sein", "kein", "gut", "viel", "immer", "wieder", "heute",
+			        "ganz", "gar", "ab", "hin", "her", "weg", "ob", "weil", "etwas", "nichts",
+			        "diese", "über", "unter", "vor", "nach", "bis"
+			    ],
+			    mittel: [
+			        // Sichtwörter
+			        "nicht", "auch", "aber", "oder", "wenn", "noch", "hier", "eine", "dass", "dann",
+			        "denn", "schon", "jetzt", "alle", "mehr", "sehr", "doch", "nur", "dort", "bald",
+			        "kann", "will", "muss", "darf", "soll", "geht", "kommt", "sieht", "macht", "sagt",
+			        "einen", "einem", "unser", "jeder", "warum", "wer", "was", "fast", "lange",
+			        // Tiere
+			        "Hund", "Katze", "Maus", "Kuh", "Pferd", "Fisch", "Vogel", "Hase", "Ente", "Schaf",
+			        "Ziege", "Schwein", "Bär", "Löwe", "Affe", "Igel", "Fuchs", "Wolf", "Frosch", "Biene",
+			        "Huhn", "Esel", "Tiger", "Zebra", "Eule", "Robbe", "Wal"
+			    ],
+			    schwer: [
+			        // Sichtwörter
+			        "vielleicht", "plötzlich", "natürlich", "zusammen", "morgen", "gestern", "deshalb", "eigentlich", "besonders", "nämlich",
+			        "trotzdem", "manchmal", "niemand", "jemand", "überall", "draußen", "wirklich", "endlich", "schließlich", "zwischen",
+			        "während", "obwohl", "sofort", "fröhlich", "langsam", "darum", "außerdem",
+			        // Tiere
+			        "Elefant", "Giraffe", "Krokodil", "Schildkröte", "Eichhörnchen", "Schmetterling", "Nashorn", "Nilpferd", "Känguru", "Pinguin",
+			        "Papagei", "Delfin", "Dinosaurier", "Schlange", "Leopard", "Kamel", "Flamingo", "Eisbär", "Marienkäfer", "Regenwurm",
+			        "Fledermaus", "Hamster", "Meerschweinchen", "Seepferdchen", "Waschbär"
+			    ]
+			};
+
+			// Silbenwörter: Silben mit Bindestrich getrennt (Sprechsilben wie in der Fibel).
+			// Leicht und Mittel werden blau/rot eingefärbt, Schwer ganz in Schwarz.
+			const silbenConfig = {
+			    // 2 Silben, meist offene Silben
+			    leicht: [
+			        "So-fa", "Na-se", "Ro-se", "Ha-se", "Lö-we", "Ti-ger", "Ra-be", "Blu-me", "Son-ne",
+			        "Wol-ke", "Re-gen", "Ta-fel", "Ku-chen", "Ho-nig", "Ap-fel", "Bir-ne", "Kat-ze", "Pi-lot"
+			    ],
+			    // 3 Silben
+			    mittel: [
+			        "Ba-na-ne", "To-ma-te", "Ra-ke-te", "Me-lo-ne", "Pa-pa-gei", "Sa-la-mi", "Te-le-fon", "Do-mi-no", "Ka-ka-du",
+			        "A-na-nas", "Pin-gu-in", "Kro-ko-dil", "Ka-pi-tän", "Zi-tro-ne", "E-le-fant", "Ka-nin-chen", "Gi-tar-re", "Mo-tor-rad"
+			    ],
+			    // 3–4 Silben, mit schwierigeren Buchstabenfolgen (sch, schr, ck, ng …)
+			    schwer: [
+			        "Schmet-ter-ling", "Scho-ko-la-de", "Re-gen-bo-gen", "Ge-burts-tag", "Kar-tof-fel", "Schild-krö-te",
+			        "Feu-er-wehr", "Fle-der-maus", "Ku-schel-tier", "Hub-schrau-ber", "Erd-bee-re", "Zahn-bürs-te",
+			        "Schul-ran-zen", "Son-nen-blu-me", "Kin-der-gar-ten", "Wasch-ma-schi-ne", "Ta-schen-lam-pe", "Os-ter-ha-se"
+			    ]
+			};
+
+			// =====================================================================
+			// EINSTELLUNGEN & KONSTANTEN
+			// =====================================================================
+			const LEVELS = ['leicht', 'mittel', 'schwer'];
+			const WORDLIST_VERSION = 2;
+			const WORDS_PER_ROUND = 10;
+			const MASTER_STREAK = 3;               // so oft hintereinander richtig = kein Knackwort mehr
+			const TIMER_OPTIONS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 15, 20]; // 0 = Aus
+			const WHEEL_ITEM_H = 40;
+			const FUEL_PER_STATION = 4;            // Treibstoff bis zur nächsten Station
+
+			const STATIONS = [
+			    { name: 'Erde',    fact: 'Hier startet deine Reise!' },
+			    { name: 'Mond',    fact: 'Auf dem Mond kannst du ungefähr sechsmal so hoch hüpfen wie auf der Erde.' },
+			    { name: 'Mars',    fact: 'Der Mars ist rot, weil sein Boden voller Rost ist.' },
+			    { name: 'Jupiter', fact: 'Jupiter ist der größte Planet. Über 1000 Erden würden in ihn hineinpassen.' },
+			    { name: 'Saturn',  fact: 'Die Ringe des Saturn bestehen aus Eisbrocken und Steinen.' },
+			    { name: 'Uranus',  fact: 'Uranus liegt auf der Seite und rollt wie eine Kugel um die Sonne.' },
+			    { name: 'Neptun',  fact: 'Auf Neptun wehen die stärksten Stürme im ganzen Sonnensystem.' },
+			    { name: 'Pluto',   fact: 'Pluto ist ein Zwergplanet und sogar kleiner als unser Mond.' },
+			    { name: 'Sterne',  fact: 'Du hast unser Sonnensystem verlassen und fliegst zu den Sternen!' }
+			];
+			const JOURNEY_MAX = (STATIONS.length - 1) * FUEL_PER_STATION;
+
+			// Speicher-Schlüssel, die beide Spiele gemeinsam nutzen
+			// (Namen unverändert, damit gespeicherte Daten aus älteren Versionen erhalten bleiben)
+			const KEYS = {
+			    board: 'sichtwoerterBestenliste',
+			    journey: 'sichtwoerterReise',
+			    options: 'sichtwoerterOptionen',
+			    game: 'leseMeisterSpiel'
+			};
+
+			// Die beiden Spiele: jedes hat eigene Wörter, Knackwörter, Bestenliste, Stufe und Zeit pro Wort.
+			// Die Weltraum-Reise ist gemeinsam – jede Runde in beiden Spielen bringt Treibstoff.
+			const GAMES = {
+			    sicht: {
+			        name: 'Sichtwörter',
+			        icon: '👀',
+			        desc: 'Wörter auf einen Blick erkennen',
+			        defaults: wordsConfig,
+			        listVersion: WORDLIST_VERSION,
+			        keys: { pools: 'sichtwoerterPools', stats: 'sichtwoerterStatistik', timer: 'sichtwoerterTimer', level: 'sichtwoerterStufe' },
+			        boardPrefix: '',
+			        levelHints: { leicht: 'Kurze, häufige Wörter', mittel: 'Häufige Wörter und Tiere', schwer: 'Lange Wörter und Tiere' },
+			        // Fahrzeuge nach Zeit für 10 Wörter
+			        vehicleLimits: { rocket: 30, jet: 45, racecar: 60 }
+			    },
+			    silben: {
+			        name: 'Silben',
+			        icon: '👏',
+			        desc: 'Lange Wörter Silbe für Silbe lesen',
+			        defaults: silbenConfig,
+			        listVersion: 1,
+			        keys: { pools: 'silbenPools', stats: 'silbenStatistik', timer: 'silbenTimer', level: 'silbenStufe' },
+			        boardPrefix: 'silben-',
+			        levelHints: { leicht: '2 Silben, blau und rot', mittel: '3 Silben, blau und rot', schwer: '3–4 Silben, ganz in Schwarz' },
+			        // Längere Wörter brauchen mehr Zeit
+			        vehicleLimits: { rocket: 45, jet: 65, racecar: 90 }
+			    }
+			};
+			function game() { return GAMES[currentGame]; }
+			function isSilben() { return currentGame === 'silben'; }
+			// Silbenwort "Ba-na-ne" → ["Ba", "na", "ne"]
+			function syllables(word) { return String(word).split('-').filter(s => s.length > 0); }
+			// Fester, gut lesbarer Schriftstil für das Silben-Training
+			const SILBEN_STYLE = { font: 'Verdana, Geneva, Arial, sans-serif', color: '#111111', weight: 'bold', size: 56 };
+
+			// Schrift-Vielfalt: gut lesbare Druckschriften mit Ersatzschriften für iPhone/iPad/Windows
+			const fonts = [
+			    'Arial, Helvetica, sans-serif',
+			    '"Times New Roman", Times, serif',
+			    'Georgia, "Times New Roman", serif',
+			    'Verdana, Geneva, sans-serif',
+			    'Tahoma, Verdana, sans-serif',
+			    '"Trebuchet MS", Arial, sans-serif',
+			    'Futura, "Century Gothic", Arial, sans-serif',
+			    '"Gill Sans", "Gill Sans MT", Calibri, sans-serif',
+			    'Palatino, "Palatino Linotype", "Book Antiqua", serif',
+			    '"Courier New", Courier, monospace',
+			    '"Chalkboard SE", "Comic Sans MS", Arial, sans-serif'
+			];
+			// Kein Rot und kein Grün: Diese Farben bedeuten im Spiel "falsch" bzw. "richtig"
+			const colors = ['#111111', '#1565C0', '#6A1B9A', '#5D4037', '#00838F']; // Schwarz, Blau, Lila, Braun, Petrol
+			const weights = ['normal', 'bold'];
+			const sizesPx = [48, 56, 64];
+			let lastFontIndex = -1;
+			let lastColorIndex = -1;
+			let currentWordSize = 56;
+
+			// =====================================================================
+			// SPEICHER (localStorage mit Ersatz im Arbeitsspeicher)
+			// =====================================================================
+			const memoryStore = {};
+			const storage = {
+			    get(key) {
+			        if (Object.prototype.hasOwnProperty.call(memoryStore, key)) return memoryStore[key];
+			        try { return localStorage.getItem(key); } catch (e) { return null; }
+			    },
+			    set(key, value) {
+			        memoryStore[key] = value;
+			        try { localStorage.setItem(key, value); } catch (e) {}
+			    },
+			    remove(key) {
+			        delete memoryStore[key];
+			        try { localStorage.removeItem(key); } catch (e) {}
+			    }
+			};
+			function readJSON(key, fallback) {
+			    const raw = storage.get(key);
+			    if (raw === null || raw === undefined) return fallback;
+			    try {
+			        const value = JSON.parse(raw);
+			        return value === null ? fallback : value;
+			    } catch (e) { return fallback; }
+			}
+			function writeJSON(key, value) { storage.set(key, JSON.stringify(value)); }
+			function $(id) { return document.getElementById(id); }
+			function escapeHTML(text) {
+			    return String(text).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+			}
+			function levelLabel(level) { return level.charAt(0).toUpperCase() + level.slice(1); }
+
+			// =====================================================================
+			// ZUSTAND
+			// =====================================================================
+			let currentGame = readJSON(KEYS.game, 'sicht');
+			if (!GAMES[currentGame]) currentGame = 'sicht';
+
+			function copyDefaults() {
+			    const d = game().defaults;
+			    return { leicht: [...d.leicht], mittel: [...d.mittel], schwer: [...d.schwer] };
+			}
+			let activePool = copyDefaults();
+			let currentDifficulty = 'leicht';
+			let currentMode = 'normal';
+			let wordStats = {};
+			let timerSeconds = 0;
+
+			// Stufe, Knackwort-Daten und Zeit pro Wort des aktuellen Spiels laden
+			function loadGameState() {
+			    const keys = game().keys;
+			    currentDifficulty = readJSON(keys.level, 'leicht');
+			    if (!LEVELS.includes(currentDifficulty)) currentDifficulty = 'leicht';
+
+			    wordStats = readJSON(keys.stats, {});
+			    if (!wordStats || typeof wordStats !== 'object' || Array.isArray(wordStats)) wordStats = {};
+
+			    timerSeconds = readJSON(keys.timer, 0);
+			    if (!TIMER_OPTIONS.includes(timerSeconds)) timerSeconds = 0;
+			}
+			loadGameState();
+
+			let journey = readJSON(KEYS.journey, { fuel: 0, trips: 0 });
+			if (!journey || !Number.isFinite(journey.fuel) || !Number.isFinite(journey.trips)) journey = { fuel: 0, trips: 0 };
+
+			// Nur noch "sound" wird genutzt; Schrift & Farbe wechseln bei Sichtwörtern jetzt immer
+			let options = Object.assign({ sound: true }, readJSON(KEYS.options, {}));
+
+			let wordsQueue = [];
+			let roundSize = WORDS_PER_ROUND;
+			let attemptsCount = 0;
+			let correctCount = 0;
+			let isProcessing = false;
+			let roundActive = false;
+			let pendingTimeout = null;
+			let deferredNext = false;     // nächstes Wort wartet, weil gerade das Menü-Fenster offen ist
+			let undoStack = [];
+			let roundWrongWords = new Set();
+			let knackAtStart = new Set();
+			let modalOpen = false;
+			let journeyTimers = [];
+
+			// Rundenzeit: läuft nur, solange wirklich gespielt wird
+			// (pausiert beim Menü-Fenster und wenn die App im Hintergrund ist)
+			const roundClock = { elapsed: 0, startedAt: 0, running: false };
+			function clockStart() {
+			    roundClock.elapsed = 0;
+			    roundClock.startedAt = performance.now();
+			    roundClock.running = true;
+			}
+			function clockPause() {
+			    if (!roundClock.running) return;
+			    roundClock.elapsed += performance.now() - roundClock.startedAt;
+			    roundClock.running = false;
+			}
+			function clockResume() {
+			    if (roundClock.running || !roundActive || modalOpen || document.hidden) return;
+			    roundClock.startedAt = performance.now();
+			    roundClock.running = true;
+			}
+			function clockSeconds() {
+			    const running = roundClock.running ? performance.now() - roundClock.startedAt : 0;
+			    return (roundClock.elapsed + running) / 1000;
+			}
+
+			// =====================================================================
+			// SOUND ENGINE
+			// =====================================================================
+			let audioCtx = null;
+			function initAudio() {
+			    const AC = window.AudioContext || window.webkitAudioContext;
+			    if (!AC) return;
+			    if (!audioCtx) audioCtx = new AC();
+			    // iPhone setzt den Ton nach Sperrbildschirm/App-Wechsel auf "interrupted" – dann neu starten
+			    if (audioCtx.state !== 'running' && audioCtx.resume) {
+			        try { audioCtx.resume().catch(() => {}); } catch (e) {}
+			    }
+			}
+
+			function playTone(freq, type, volume, duration, endFreq) {
+			    if (!audioCtx || !options.sound) return;
+			    const osc = audioCtx.createOscillator();
+			    const gainNode = audioCtx.createGain();
+			    osc.connect(gainNode);
+			    gainNode.connect(audioCtx.destination);
+			    osc.type = type;
+			    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+			    if (endFreq) osc.frequency.exponentialRampToValueAtTime(endFreq, audioCtx.currentTime + duration);
+			    gainNode.gain.setValueAtTime(volume, audioCtx.currentTime);
+			    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+			    osc.start();
+			    osc.stop(audioCtx.currentTime + duration);
+			}
+			function playDing() { playTone(880, 'sine', 0.3, 0.5); }
+			function playTimeout() { playTone(320, 'sine', 0.2, 0.35, 180); }
+			function playTada() {
+			    [440, 554, 659, 880].forEach((freq, index) => {
+			        setTimeout(() => playTone(freq, 'triangle', 0.2, 1), index * 120);
+			    });
+			}
+			function playArrival() {
+			    [523, 659, 784, 1047, 1319].forEach((freq, index) => {
+			        setTimeout(() => playTone(freq, 'sine', 0.15, 0.4), index * 90);
+			    });
+			}
+
+			// =====================================================================
+			// WÖRTER LADEN & SPEICHERN
+			// =====================================================================
+			function saveWords() {
+			    writeJSON(game().keys.pools, { version: game().listVersion, pools: activePool });
+			}
+
+			function loadWords() {
+			    const g = game();
+			    const data = readJSON(g.keys.pools, null);
+			    if (!data || typeof data !== 'object') { activePool = copyDefaults(); return; }
+
+			    if (data.version === g.listVersion && data.pools) {
+			        activePool = {};
+			        LEVELS.forEach(level => {
+			            const list = Array.isArray(data.pools[level])
+			                ? data.pools[level].filter(w => typeof w === 'string' && w.trim())
+			                : [];
+			            activePool[level] = list.length >= 10 ? list : [...g.defaults[level]];
+			        });
+			    } else if (currentGame === 'sicht') {
+			        // Altes Format der Sichtwörter: eigene Wörter behalten, neue Standardwörter ergänzen
+			        const oldPools = data.pools ? data.pools : data;
+			        activePool = {};
+			        LEVELS.forEach(level => {
+			            const otherDefaults = new Set(LEVELS.filter(l => l !== level).flatMap(l => wordsConfig[l]));
+			            const own = Array.isArray(oldPools[level]) ? oldPools[level] : [];
+			            activePool[level] = [...new Set([...wordsConfig[level], ...own.filter(w => !otherDefaults.has(w))])];
+			        });
+			        saveWords();
+			    } else {
+			        activePool = copyDefaults();
+			    }
+			}
+
+			// =====================================================================
+			// PROBLEMWÖRTER (KNACKWÖRTER)
+			// =====================================================================
+			function isKnackwort(word) {
+			    const s = wordStats[word];
+			    return !!(s && s.wrong > 0 && s.streak < MASTER_STREAK);
+			}
+			function knackScore(word) {
+			    const s = wordStats[word];
+			    return s ? s.wrong - s.streak : 0;
+			}
+			// Knackwörter bekommen mehr Gewicht und kommen in normalen Runden häufiger dran
+			function wordWeight(word) {
+			    if (!isKnackwort(word)) return 1;
+			    return 1 + Math.min(wordStats[word].wrong, 4) * 1.5;
+			}
+			function knackwoerterFor(level) {
+			    return activePool[level].filter(isKnackwort);
+			}
+			function recordAnswer(word, correct) {
+			    const s = wordStats[word] || { seen: 0, wrong: 0, streak: 0 };
+			    wordStats[word] = {
+			        seen: s.seen + 1,
+			        wrong: s.wrong + (correct ? 0 : 1),
+			        streak: correct ? s.streak + 1 : 0
+			    };
+			    writeJSON(game().keys.stats, wordStats);
+			}
+			function weightedSample(words, count) {
+			    const pool = words.map(w => ({ w, weight: wordWeight(w) }));
+			    const result = [];
+			    while (result.length < count && pool.length > 0) {
+			        const total = pool.reduce((sum, item) => sum + item.weight, 0);
+			        let r = Math.random() * total;
+			        let index = 0;
+			        while (index < pool.length - 1 && r >= pool[index].weight) {
+			            r -= pool[index].weight;
+			            index++;
+			        }
+			        result.push(pool.splice(index, 1)[0].w);
+			    }
+			    return result;
+			}
+			function updateKnackButton() {
+			    const count = knackwoerterFor(currentDifficulty).length;
+			    const btn = $('btn-knack');
+			    btn.disabled = count === 0;
+			    btn.textContent = count ? `🧠 Knackwörter üben (${count})` : '🧠 Noch keine Knackwörter';
+			}
+
+			// =====================================================================
+			// BILDSCHIRME & MENÜ
+			// =====================================================================
+			function showScreen(screenId) {
+			    ['screen-start', 'screen-game', 'screen-end', 'screen-settings'].forEach(id => $(id).classList.add('hidden'));
+			    $(screenId).classList.remove('hidden');
+			    $(screenId).scrollTop = 0;
+			}
+
+			function goToMenu() {
+			    clearJourneyTimers();
+			    loadWords();
+			    showScreen('screen-start');
+			    updateGameButtons();
+			    setDifficulty(currentDifficulty);
+			    updateSoundButton();
+			    renderJourney($('journey-start'), journey.fuel, 0);
+			    setWheelToValue(timerSeconds);
+			}
+
+			// Zwischen Sichtwörtern und Silben wechseln
+			function setGame(name) {
+			    if (!GAMES[name]) return;
+			    if (name !== currentGame) {
+			        currentGame = name;
+			        writeJSON(KEYS.game, name);
+			        loadGameState();
+			        loadWords();
+			    }
+			    updateGameButtons();
+			    setDifficulty(currentDifficulty);
+			    setWheelToValue(timerSeconds);
+			}
+			function updateGameButtons() {
+			    Object.keys(GAMES).forEach(name => {
+			        $('game-' + name).classList.toggle('active', name === currentGame);
+			    });
+			    $('game-desc').textContent = game().desc;
+			}
+
+			function setDifficulty(diff) {
+			    currentDifficulty = diff;
+			    writeJSON(game().keys.level, diff);
+			    LEVELS.forEach(level => $('btn-' + level).classList.remove('active'));
+			    $('btn-' + diff).classList.add('active');
+			    $('level-hint').textContent = game().levelHints[diff];
+			    updateKnackButton();
+			}
+
+			// =====================================================================
+			// TÖNE
+			// =====================================================================
+			function toggleSound() {
+			    options.sound = !options.sound;
+			    writeJSON(KEYS.options, options);
+			    updateSoundButton();
+			    if (options.sound) { initAudio(); playDing(); }
+			}
+			function updateSoundButton() {
+			    const btn = $('btn-sound');
+			    btn.textContent = options.sound ? '🔊' : '🔇';
+			    btn.setAttribute('aria-label', options.sound ? 'Töne aus' : 'Töne an');
+			}
+
+			// =====================================================================
+			// ZEIT-RAD
+			// =====================================================================
+			function buildWheel() {
+			    const wheel = $('timer-wheel');
+			    wheel.innerHTML = '<div class="wheel-spacer"></div>';
+			    TIMER_OPTIONS.forEach((value, i) => {
+			        const item = document.createElement('div');
+			        item.className = 'wheel-item';
+			        item.textContent = value === 0 ? 'Aus' : value + ' s';
+			        item.onclick = () => wheel.scrollTo({ top: i * WHEEL_ITEM_H, behavior: 'smooth' });
+			        wheel.appendChild(item);
+			    });
+			    wheel.insertAdjacentHTML('beforeend', '<div class="wheel-spacer"></div>');
+
+			    let rafId = null;
+			    let commitTimer = null;
+			    wheel.addEventListener('scroll', () => {
+			        if (!rafId) rafId = requestAnimationFrame(() => { rafId = null; updateWheelVisual(); });
+			        clearTimeout(commitTimer);
+			        commitTimer = setTimeout(commitWheel, 150);
+			    }, { passive: true });
+			}
+			function wheelIndex() {
+			    const index = Math.round($('timer-wheel').scrollTop / WHEEL_ITEM_H);
+			    return Math.max(0, Math.min(TIMER_OPTIONS.length - 1, index));
+			}
+			function updateWheelVisual() {
+			    const wheel = $('timer-wheel');
+			    const center = wheel.scrollTop + WHEEL_ITEM_H * 1.5;
+			    const selected = wheelIndex();
+			    wheel.querySelectorAll('.wheel-item').forEach((item, i) => {
+			        const offset = (WHEEL_ITEM_H + i * WHEEL_ITEM_H + WHEEL_ITEM_H / 2 - center) / WHEEL_ITEM_H;
+			        const d = Math.min(Math.abs(offset), 2);
+			        item.style.opacity = String(1 - d * 0.35);
+			        item.style.transform = `rotateX(${Math.max(-60, Math.min(60, -offset * 25))}deg) scale(${1 - d * 0.12})`;
+			        item.classList.toggle('selected', i === selected);
+			    });
+			}
+			function commitWheel() {
+			    const wheel = $('timer-wheel');
+			    const index = wheelIndex();
+			    const target = index * WHEEL_ITEM_H;
+			    if (Math.abs(wheel.scrollTop - target) > 2) wheel.scrollTo({ top: target, behavior: 'smooth' });
+			    timerSeconds = TIMER_OPTIONS[index];
+			    writeJSON(game().keys.timer, timerSeconds);
+			}
+			function setWheelToValue(value) {
+			    const index = Math.max(0, TIMER_OPTIONS.indexOf(value));
+			    $('timer-wheel').scrollTop = index * WHEEL_ITEM_H;
+			    updateWheelVisual();
+			}
+
+			// =====================================================================
+			// EINSTELLUNGEN
+			// =====================================================================
+			// Silbenwort aufräumen: "Ba - na--ne" → "Ba-na-ne" (auch · oder | als Trennzeichen erlaubt)
+			function normalizeSilbenWord(word) {
+			    return word
+			        .replace(/[·•|]/g, '-')
+			        .replace(/\s*-\s*/g, '-')
+			        .replace(/-{2,}/g, '-')
+			        .replace(/^-+|-+$/g, '');
+			}
+			// Trennt bei Komma, Semikolon oder Zeilenumbruch, entfernt doppelte Wörter
+			function parseWords(text) {
+			    let words = String(text).split(/[,;\n\r]+/).map(w => w.trim());
+			    if (isSilben()) words = words.map(normalizeSilbenWord);
+			    return [...new Set(words.filter(w => w.length > 0))];
+			}
+			function parseWordInput() {
+			    return parseWords($('word-input').value);
+			}
+			function updateWordCount() {
+			    const words = parseWordInput();
+			    const count = words.length;
+			    $('word-count').textContent = count + (count === 1 ? ' Wort' : ' Wörter');
+			    // Silben: Hinweis auf Wörter ohne Bindestrich (könnten vergessen worden sein)
+			    const warning = $('word-warning');
+			    const single = isSilben() ? words.filter(w => syllables(w).length < 2) : [];
+			    warning.classList.toggle('hidden', single.length === 0);
+			    warning.textContent = single.length
+			        ? `Ohne Bindestrich (nur 1 Silbe): ${single.slice(0, 8).join(', ')}${single.length > 8 ? ' …' : ''}`
+			        : '';
+			}
+			function renderKnackList() {
+			    const list = knackwoerterFor(settingsLevel).sort((a, b) => wordStats[b].wrong - wordStats[a].wrong);
+			    $('knack-level').textContent = levelLabel(settingsLevel);
+			    $('knack-list').innerHTML = list.length
+			        ? list.map(w => `${escapeHTML(w)} <span class="knack-count">(${wordStats[w].wrong}× falsch)</span>`).join(', ')
+			        : 'Noch keine Knackwörter. 🎉';
+			}
+
+			// In den Einstellungen kann man zwischen den Stufen wechseln.
+			// Änderungen werden pro Stufe als Entwurf gemerkt und erst mit "Speichern" übernommen.
+			let settingsLevel = 'leicht';
+			let settingsDrafts = {};
+			function showSettingsLevel(level) {
+			    settingsLevel = level;
+			    document.querySelectorAll('#settings-tabs .diff-btn').forEach(btn => {
+			        btn.classList.toggle('active', btn.dataset.level === level);
+			    });
+			    $('settings-level').textContent = levelLabel(level);
+			    $('word-input').value = settingsDrafts[level];
+			    updateWordCount();
+			    renderKnackList();
+			}
+			function switchSettingsLevel(level) {
+			    settingsDrafts[settingsLevel] = $('word-input').value;
+			    $('settings-error').classList.add('hidden');
+			    showSettingsLevel(level);
+			}
+			function wordsLabel() { return isSilben() ? 'Silbenwörter' : 'Sichtwörter'; }
+			// Silbenwörter stehen je in einer eigenen Zeile, damit die Zeile nie mitten im Wort am Bindestrich umbricht
+			function wordsToText(words) { return words.join(isSilben() ? '\n' : ', '); }
+			function openSettings() {
+			    loadWords();
+			    settingsDrafts = {};
+			    LEVELS.forEach(level => { settingsDrafts[level] = wordsToText(activePool[level]); });
+			    $('settings-error').classList.add('hidden');
+			    $('settings-title').textContent = `${wordsLabel()} anpassen ⚙️`;
+			    $('settings-syl-hint').classList.toggle('hidden', !isSilben());
+			    document.querySelectorAll('.settings-game-name').forEach(el => { el.textContent = wordsLabel(); });
+			    showSettingsLevel(currentDifficulty);
+			    showScreen('screen-settings');
+			}
+			function saveSettings() {
+			    settingsDrafts[settingsLevel] = $('word-input').value;
+			    const newPools = {};
+			    for (const level of LEVELS) {
+			        newPools[level] = parseWords(settingsDrafts[level]);
+			        if (newPools[level].length < 10) {
+			            showSettingsLevel(level);
+			            $('settings-error').textContent = `Bitte gib für ${levelLabel(level)} mindestens 10 Wörter ein.`;
+			            $('settings-error').classList.remove('hidden');
+			            return;
+			        }
+			    }
+			    activePool = newPools;
+			    saveWords();
+			    goToMenu();
+			}
+			function markDone(btn) {
+			    if (!btn.dataset.label) btn.dataset.label = btn.textContent;
+			    btn.textContent = '✓ Erledigt';
+			    clearTimeout(btn._doneTimer);
+			    btn._doneTimer = setTimeout(() => { btn.textContent = btn.dataset.label; }, 1500);
+			}
+			function resetToDefault(btn) {
+			    showConfirm(`Standard-${wordsLabel()} für alle Schwierigkeiten wiederherstellen?`, 'Ja', 'Abbrechen', () => {
+			        storage.remove(game().keys.pools);
+			        activePool = copyDefaults();
+			        LEVELS.forEach(level => { settingsDrafts[level] = wordsToText(activePool[level]); });
+			        $('settings-error').classList.add('hidden');
+			        showSettingsLevel(settingsLevel);
+			        markDone(btn);
+			    });
+			}
+			function resetStats(btn) {
+			    showConfirm(`Alle Knackwörter-Daten für ${wordsLabel()} löschen?`, 'Ja, löschen', 'Abbrechen', () => {
+			        wordStats = {};
+			        writeJSON(game().keys.stats, wordStats);
+			        renderKnackList();
+			        markDone(btn);
+			    });
+			}
+			// Bestenlisten gehören zum Spiel: Silben-Listen beginnen mit "silben-", alle anderen sind Sichtwörter
+			function boardBelongsToGame(key) {
+			    return isSilben() ? key.startsWith('silben-') : !key.startsWith('silben-');
+			}
+			function resetBoard(btn) {
+			    showConfirm(`Alle Bestenlisten für ${wordsLabel()} löschen?`, 'Ja, löschen', 'Abbrechen', () => {
+			        let board = readJSON(KEYS.board, {});
+			        if (!board || typeof board !== 'object' || Array.isArray(board)) board = {};
+			        Object.keys(board).forEach(key => { if (boardBelongsToGame(key)) delete board[key]; });
+			        writeJSON(KEYS.board, board);
+			        markDone(btn);
+			    });
+			}
+			function resetJourney(btn) {
+			    showConfirm('Die Weltraum-Reise wieder bei der Erde starten?', 'Ja, neu starten', 'Abbrechen', () => {
+			        journey = { fuel: 0, trips: 0 };
+			        writeJSON(KEYS.journey, journey);
+			        markDone(btn);
+			    });
+			}
+
+			// =====================================================================
+			// BESTÄTIGUNGS-FENSTER
+			// =====================================================================
+			function showConfirm(text, yesLabel, noLabel, onYes, onNo) {
+			    modalOpen = true;
+			    $('modal-text').textContent = text;
+			    const yes = $('modal-yes');
+			    const no = $('modal-no');
+			    yes.textContent = yesLabel;
+			    no.textContent = noLabel;
+			    const close = (callback) => {
+			        $('modal').classList.add('hidden');
+			        modalOpen = false;
+			        if (callback) callback();
+			    };
+			    yes.onclick = () => close(onYes);
+			    no.onclick = () => close(onNo);
+			    $('modal').classList.remove('hidden');
+			}
+
+			// =====================================================================
+			// SPIEL
+			// =====================================================================
+			function shuffleArray(array) {
+			    let currentIndex = array.length, randomIndex;
+			    while (currentIndex != 0) {
+			        randomIndex = Math.floor(Math.random() * currentIndex);
+			        currentIndex--;
+			        [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
+			    }
+			    return array;
+			}
+
+			function startGame(mode) {
+			    initAudio();
+			    loadWords();
+			    mode = mode || 'normal';
+
+			    let words = [];
+			    if (mode === 'knack') {
+			        const knack = knackwoerterFor(currentDifficulty);
+			        if (knack.length === 0) {
+			            mode = 'normal';
+			        } else {
+			            words = shuffleArray(knack.sort((a, b) => knackScore(b) - knackScore(a)).slice(0, WORDS_PER_ROUND));
+			        }
+			    }
+			    if (mode === 'normal') {
+			        words = shuffleArray(weightedSample(activePool[currentDifficulty], WORDS_PER_ROUND));
+			    }
+
+			    currentMode = mode;
+			    wordsQueue = [...words];
+			    roundSize = words.length;
+			    attemptsCount = 0;
+			    correctCount = 0;
+			    undoStack = [];
+			    roundWrongWords = new Set();
+			    knackAtStart = new Set(words.filter(isKnackwort));
+			    isProcessing = false;
+			    if (pendingTimeout) clearTimeout(pendingTimeout);
+			    pendingTimeout = null;
+			    deferredNext = false;
+			    clearJourneyTimers();
+			    roundActive = true;
+
+			    $('mode-label').textContent = mode === 'knack'
+			        ? `🧠 Knackwörter-Training ${game().name} (${levelLabel(currentDifficulty)})`
+			        : `${game().icon} ${game().name} · Stufe ${levelLabel(currentDifficulty)}`;
+			    $('timeout-msg').classList.remove('show');
+
+			    updateProgress();
+			    updateUndoButton();
+			    showScreen('screen-game');
+			    clockStart();
+			    showWord();
+			}
+
+			function pickDifferentIndex(length, lastIndex) {
+			    let i;
+			    do { i = Math.floor(Math.random() * length); } while (length > 1 && i === lastIndex);
+			    return i;
+			}
+
+			// Das Wort wird nie umgebrochen – ist es zu breit, wird die Schrift kleiner
+			function fitWordToBox(display, textEl, startSize) {
+			    let size = startSize;
+			    textEl.style.fontSize = size + 'px';
+			    const maxWidth = display.clientWidth - 10;
+			    while (textEl.offsetWidth > maxWidth && size > 22) {
+			        size -= 2;
+			        textEl.style.fontSize = size + 'px';
+			    }
+			}
+			function refitWord() {
+			    if ($('screen-game').classList.contains('hidden')) return;
+			    fitWordToBox($('word-display'), $('word-text'), currentWordSize);
+			}
+			// Beim Drehen des Geräts (Hoch-/Querformat) die Wortgröße neu anpassen
+			window.addEventListener('resize', refitWord);
+
+			function showWord() {
+			    const display = $('word-display');
+			    const textEl = $('word-text');
+			    textEl.classList.remove('correct-anim', 'wrong-anim');
+
+			    if (isSilben()) {
+			        showSilbenWord(textEl, wordsQueue[0]);
+			    } else {
+			        // Sichtwörter: Schrift, Farbe, Stärke und Größe wechseln bei jedem Wort leicht,
+			        // damit das Wortbild erkannt wird und nicht eine bestimmte Schrift
+			        lastFontIndex = pickDifferentIndex(fonts.length, lastFontIndex);
+			        lastColorIndex = pickDifferentIndex(colors.length, lastColorIndex);
+			        textEl.style.fontFamily = fonts[lastFontIndex];
+			        textEl.style.color = colors[lastColorIndex];
+			        textEl.style.fontWeight = weights[Math.floor(Math.random() * weights.length)];
+			        textEl.style.letterSpacing = '';
+			        currentWordSize = sizesPx[Math.floor(Math.random() * sizesPx.length)];
+			        textEl.textContent = wordsQueue[0];
+			    }
+
+			    fitWordToBox(display, textEl, currentWordSize);
+			    startWordTimer();
+			}
+
+			// Silben: in Leicht und Mittel abwechselnd blau/rot (erste Silbe blau), in Schwer alles schwarz
+			function showSilbenWord(textEl, word) {
+			    textEl.style.fontFamily = SILBEN_STYLE.font;
+			    textEl.style.color = SILBEN_STYLE.color;
+			    textEl.style.fontWeight = SILBEN_STYLE.weight;
+			    textEl.style.letterSpacing = '0.02em';
+			    currentWordSize = SILBEN_STYLE.size;
+
+			    const parts = syllables(word);
+			    const colored = currentDifficulty !== 'schwer';
+			    textEl.textContent = '';
+			    parts.forEach((syl, i) => {
+			        const span = document.createElement('span');
+			        span.className = 'syl' + (colored ? (i % 2 === 0 ? ' syl-blue' : ' syl-red') : '');
+			        span.textContent = syl;
+			        textEl.appendChild(span);
+			    });
+			}
+
+			function updateProgress() {
+			    $('attempt-count').textContent = attemptsCount;
+			    $('progress-bar').style.width = (correctCount / roundSize) * 100 + '%';
+			    $('progress-text').textContent = `${correctCount} / ${roundSize}`;
+			}
+
+			function updateUndoButton() {
+			    $('btn-undo').disabled = !roundActive || undoStack.length === 0;
+			}
+
+			function checkAnswer(isCorrect) {
+			    handleAnswer(isCorrect);
+			}
+
+			// Nach der Rückmeldung (grün/rot) kurz warten, dann das nächste Wort zeigen.
+			// Ist in dem Moment das Menü-Fenster offen, wartet das Spiel, bis "Weiterspielen" gedrückt wird.
+			function scheduleNext(updateQueue) {
+			    pendingTimeout = setTimeout(() => {
+			        pendingTimeout = null;
+			        updateQueue();
+			        if (modalOpen) { deferredNext = true; return; }
+			        nextWord();
+			    }, 600);
+			}
+
+			function handleAnswer(isCorrect) {
+			    if (!roundActive || isProcessing || modalOpen || wordsQueue.length === 0) return;
+			    isProcessing = true;
+			    stopWordTimer();
+
+			    const word = wordsQueue[0];
+			    // Schnappschuss für "Rückgängig"
+			    undoStack.push({
+			        queue: [...wordsQueue],
+			        attempts: attemptsCount,
+			        correct: correctCount,
+			        word: word,
+			        prevStat: wordStats[word] ? { ...wordStats[word] } : null,
+			        wrongWords: [...roundWrongWords]
+			    });
+
+			    attemptsCount++;
+			    recordAnswer(word, isCorrect);
+			    updateUndoButton();
+
+			    const textEl = $('word-text');
+			    const gameContainer = $('screen-game');
+			    gameContainer.classList.remove('flash-correct', 'flash-wrong');
+			    void gameContainer.offsetWidth;
+			    initAudio();
+
+			    if (isCorrect) {
+			        playDing();
+			        textEl.classList.add('correct-anim');
+			        gameContainer.classList.add('flash-correct');
+			        correctCount++;
+			        updateProgress();
+			        scheduleNext(() => wordsQueue.shift());
+			    } else {
+			        roundWrongWords.add(word);
+			        textEl.classList.add('wrong-anim');
+			        gameContainer.classList.add('flash-wrong');
+			        updateProgress();
+			        // Falsch gelesenes Wort wandert ans Ende der Warteschlange
+			        scheduleNext(() => wordsQueue.push(wordsQueue.shift()));
+			    }
+			}
+
+			function nextWord() {
+			    if (wordsQueue.length > 0) {
+			        showWord();
+			        isProcessing = false;
+			    } else {
+			        endGame();
+			    }
+			}
+
+			function undoLast() {
+			    if (!roundActive || modalOpen || undoStack.length === 0) return;
+			    if (pendingTimeout) { clearTimeout(pendingTimeout); pendingTimeout = null; }
+			    deferredNext = false;
+			    stopWordTimer();
+
+			    const snap = undoStack.pop();
+			    wordsQueue = snap.queue;
+			    attemptsCount = snap.attempts;
+			    correctCount = snap.correct;
+			    roundWrongWords = new Set(snap.wrongWords);
+			    if (snap.prevStat) wordStats[snap.word] = snap.prevStat;
+			    else delete wordStats[snap.word];
+			    writeJSON(game().keys.stats, wordStats);
+
+			    $('screen-game').classList.remove('flash-correct', 'flash-wrong');
+			    $('timeout-msg').classList.remove('show');
+			    isProcessing = false;
+			    updateProgress();
+			    updateUndoButton();
+			    showWord();
+			}
+
+			function askBackToMenu() {
+			    if (!roundActive) { goToMenu(); return; }
+			    if (modalOpen) return;
+			    pauseWordTimer();
+			    clockPause();
+			    showConfirm('Runde abbrechen und zurück zum Menü?', 'Ja, zum Menü', 'Weiterspielen',
+			        () => { abortRound(); goToMenu(); },
+			        () => {
+			            if (!roundActive) return;
+			            clockResume();
+			            if (deferredNext) { deferredNext = false; nextWord(); }
+			            else if (!isProcessing) resumeWordTimer();
+			        }
+			    );
+			}
+
+			function abortRound() {
+			    roundActive = false;
+			    isProcessing = false;
+			    deferredNext = false;
+			    stopWordTimer();
+			    clockPause();
+			    if (pendingTimeout) { clearTimeout(pendingTimeout); pendingTimeout = null; }
+			    undoStack = [];
+			    updateUndoButton();
+			}
+
+			// =====================================================================
+			// TIMER PRO WORT
+			// =====================================================================
+			const timer = { running: false, elapsed: 0, startedAt: 0, raf: 0 };
+
+			function startWordTimer() {
+			    stopWordTimer();
+			    const wrap = $('timer-wrap');
+			    if (!timerSeconds) { wrap.classList.add('hidden'); return; }
+			    wrap.classList.remove('hidden');
+			    drawTimer(1);
+			    if (!document.hidden) resumeWordTimer();
+			}
+			function resumeWordTimer() {
+			    if (!timerSeconds || timer.running || modalOpen || !roundActive) return;
+			    timer.running = true;
+			    timer.startedAt = performance.now();
+			    timer.raf = requestAnimationFrame(tickTimer);
+			}
+			function pauseWordTimer() {
+			    if (!timer.running) return;
+			    timer.elapsed += performance.now() - timer.startedAt;
+			    timer.running = false;
+			    cancelAnimationFrame(timer.raf);
+			}
+			function stopWordTimer() {
+			    timer.running = false;
+			    timer.elapsed = 0;
+			    cancelAnimationFrame(timer.raf);
+			}
+			function drawTimer(left) {
+			    const bar = $('timer-bar');
+			    bar.style.width = (left * 100) + '%';
+			    bar.style.backgroundColor = left > 0.5 ? '#27ae60' : (left > 0.25 ? '#f39c12' : '#e74c3c');
+			    $('timer-label').textContent = '⏱️ ' + Math.ceil(left * timerSeconds);
+			}
+			function tickTimer() {
+			    if (!timer.running) return;
+			    const elapsed = timer.elapsed + performance.now() - timer.startedAt;
+			    const left = Math.max(0, 1 - elapsed / (timerSeconds * 1000));
+			    drawTimer(left);
+			    if (left <= 0) {
+			        timer.running = false;
+			        handleTimeout();
+			        return;
+			    }
+			    timer.raf = requestAnimationFrame(tickTimer);
+			}
+			function handleTimeout() {
+			    if (!roundActive || isProcessing || wordsQueue.length === 0) return;
+			    const msg = $('timeout-msg');
+			    msg.classList.add('show');
+			    setTimeout(() => msg.classList.remove('show'), 700);
+			    initAudio();
+			    playTimeout();
+			    handleAnswer(false);
+			}
+			// Timer und Rundenzeit anhalten, wenn die App in den Hintergrund geht (Sperrbildschirm, App-Wechsel)
+			document.addEventListener('visibilitychange', () => {
+			    if (document.hidden) {
+			        pauseWordTimer();
+			        clockPause();
+			    } else if (roundActive && !modalOpen) {
+			        clockResume();
+			        if (!isProcessing) resumeWordTimer();
+			    }
+			});
+
+			// =====================================================================
+			// RUNDENENDE
+			// =====================================================================
+			function computeAward(extra) {
+			    if (extra <= 0) return { trophy: '🏆🏆🏆', msg: 'Perfekt! Alle beim ersten Mal richtig!' };
+			    if (extra === 1) return { trophy: '🥇', msg: 'Fast perfekt! Eine echte Gold-Leistung!' };
+			    if (extra === 2) return { trophy: '🥈', msg: 'Tolle Silber-Leistung!' };
+			    if (extra <= 4) return { trophy: '🥉', msg: 'Super Bronze-Abzeichen!' };
+			    if (extra <= 6) return { trophy: '🏅', msg: 'Dein Ehrenabzeichen! Gut gekämpft!' };
+			    if (extra <= 9) return { trophy: '💪', msg: 'Weiter so! Du wirst immer besser!' };
+			    return { trophy: '👍', msg: 'Gut gemacht! Übung macht den Meister!' };
+			}
+
+			function endGame() {
+			    roundActive = false;
+			    isProcessing = false;
+			    deferredNext = false;
+			    stopWordTimer();
+			    clockPause();
+			    undoStack = [];
+			    updateUndoButton();
+
+			    // Nur die reine Spielzeit zählt (ohne Pausen im Menü-Fenster oder im Hintergrund)
+			    const timeDiff = Math.max(1, Math.round(clockSeconds()));
+			    const extra = attemptsCount - roundSize;
+			    const award = computeAward(extra);
+
+			    // Fahrzeuge nach Zeit (bei kürzeren Knackwörter-Runden anteilig)
+			    const factor = roundSize / WORDS_PER_ROUND;
+			    // Zeitgrenzen je Spiel (Silbenwörter sind länger und bekommen mehr Zeit)
+			    const limits = game().vehicleLimits;
+			    const vehicles = [
+			        { limit: limits.rocket,  type: 'rocket',  emoji: '🚀', color: '#FF8C00', text: 'Raketenstart!' },
+			        { limit: limits.jet,     type: 'jet',     emoji: '✈️', color: '#3498db', text: 'Düsenjet!' },
+			        { limit: limits.racecar, type: 'racecar', emoji: '🏎️', color: '#e74c3c', text: 'Rennwagen!' }
+			    ];
+			    let messageHTML = award.msg;
+			    let vehicleEmoji = '';
+			    for (const v of vehicles) {
+			        const limit = Math.max(1, Math.round(v.limit * factor));
+			        if (timeDiff < limit) {
+			            vehicleEmoji = v.emoji;
+			            triggerVehicleAnimation(v.type);
+			            messageHTML += `<br><span style="color: ${v.color}; font-size: 0.8em;">${v.emoji} ${v.text} Unter ${limit} Sekunden!</span>`;
+			            break;
+			        }
+			    }
+
+			    playTada();
+			    shootConfetti();
+
+			    $('trophy-display').textContent = award.trophy;
+			    $('end-message').innerHTML = messageHTML;
+			    $('final-attempts').textContent = attemptsCount;
+			    $('final-attempts-word').textContent = attemptsCount === 1 ? 'Versuch' : 'Versuche';
+			    $('final-time').textContent = timeDiff;
+			    renderRoundWords();
+
+			    // Eigene Bestenliste je Spiel, Stufe und Modus, z. B. "mittel", "knack-mittel", "silben-mittel"
+			    const isKnack = currentMode === 'knack';
+			    const boardKey = game().boardPrefix + (isKnack ? 'knack-' : '') + currentDifficulty;
+			    const boardTitle = `Bestenliste ${isKnack ? 'Knackwörter ' : ''}${isSilben() ? 'Silben ' : ''}${levelLabel(currentDifficulty)} 📊`;
+			    const entry = {
+			        attempts: attemptsCount,
+			        words: roundSize,
+			        time: timeDiff,
+			        award: award.trophy + (vehicleEmoji ? ' ' + vehicleEmoji : ''),
+			        date: new Date().toISOString()
+			    };
+			    const result = addToLeaderboard(boardKey, entry);
+
+			    showScreen('screen-end');
+			    renderBoard(boardTitle, result);
+			    advanceJourney(extra);
+			}
+
+			function renderRoundWords() {
+			    const parts = [];
+			    const tricky = [...roundWrongWords];
+			    const mastered = [...knackAtStart].filter(w => !isKnackwort(w));
+			    if (tricky.length) {
+			        parts.push(`🧠 Knifflig waren: <strong>${escapeHTML(tricky.join(', '))}</strong><br><small>Diese Wörter kommen jetzt öfter dran.</small>`);
+			    } else {
+			        parts.push('✨ Kein einziges Wort war knifflig!');
+			    }
+			    if (mastered.length) {
+			        parts.push(`🌟 Gemeistert: <strong>${escapeHTML(mastered.join(', '))}</strong>`);
+			    }
+			    $('round-words').innerHTML = parts.join('<br>');
+			}
+
+			// =====================================================================
+			// BESTENLISTE
+			// =====================================================================
+			function compareEntries(a, b) {
+			    return ((a.attempts - a.words) - (b.attempts - b.words))
+			        || (a.time - b.time)
+			        || (a.date < b.date ? -1 : (a.date > b.date ? 1 : 0));
+			}
+			function addToLeaderboard(key, entry) {
+			    let board = readJSON(KEYS.board, {});
+			    if (!board || typeof board !== 'object' || Array.isArray(board)) board = {};
+			    const list = Array.isArray(board[key]) ? board[key].filter(e => e && typeof e === 'object') : [];
+			    list.push(entry);
+			    list.sort(compareEntries);
+			    const rank = list.indexOf(entry) + 1;
+			    const total = list.length;
+			    board[key] = list.slice(0, 100);
+			    writeJSON(KEYS.board, board);
+			    return { list: board[key], rank, total, entry };
+			}
+			function renderBoard(title, result) {
+			    const { list, rank, total, entry } = result;
+			    $('board-title').textContent = title;
+
+			    let message;
+			    if (total === 1) message = '⭐ Dein erster Eintrag in dieser Liste!';
+			    else if (rank === 1) message = '🎉 Neuer Rekord! Du bist auf Platz 1!';
+			    else message = `Du bist auf Platz ${rank} von ${total}.`;
+			    $('rank-message').textContent = message;
+
+			    const body = $('board-body');
+			    body.innerHTML = '';
+			    const addRow = (e, place, isCurrent) => {
+			        const tr = document.createElement('tr');
+			        if (isCurrent) tr.className = 'current';
+			        [place + '.', e.time + ' s', e.attempts, e.award].forEach(value => {
+			            const td = document.createElement('td');
+			            td.textContent = value;
+			            tr.appendChild(td);
+			        });
+			        body.appendChild(tr);
+			        return tr;
+			    };
+
+			    let currentRow = null;
+			    list.slice(0, 10).forEach((e, i) => {
+			        const row = addRow(e, i + 1, i + 1 === rank);
+			        if (i + 1 === rank) currentRow = row;
+			    });
+			    if (rank > 10) {
+			        const gap = document.createElement('tr');
+			        gap.className = 'gap';
+			        gap.innerHTML = '<td colspan="4">…</td>';
+			        body.appendChild(gap);
+			        currentRow = addRow(entry, rank, true);
+			    }
+			    if (currentRow) {
+			        const scroller = document.querySelector('.board-scroll');
+			        scroller.scrollTop = Math.max(0, currentRow.offsetTop - scroller.clientHeight / 2);
+			    }
+			}
+
+			// =====================================================================
+			// WELTRAUM-REISE
+			// =====================================================================
+			function journeySVG(prefix) {
+			    return `
+			    <svg class="space-svg" viewBox="0 0 360 84" aria-hidden="true">
+			        <defs><clipPath id="${prefix}-jupiter"><circle cx="140" cy="62" r="12"/></clipPath></defs>
+			        <g fill="#ffffff" opacity="0.7">
+			            <circle cx="35" cy="12" r="1"/><circle cx="92" cy="22" r="1.2"/><circle cx="128" cy="7" r="0.8"/>
+			            <circle cx="172" cy="18" r="1"/><circle cx="214" cy="9" r="1.3"/><circle cx="252" cy="24" r="0.8"/>
+			            <circle cx="292" cy="8" r="1.1"/><circle cx="328" cy="20" r="0.9"/><circle cx="58" cy="80" r="0.8"/>
+			            <circle cx="118" cy="82" r="1"/><circle cx="238" cy="81" r="0.9"/><circle cx="318" cy="80" r="1"/>
+			        </g>
+			        <line x1="20" y1="62" x2="340" y2="62" stroke="rgba(255,255,255,0.35)" stroke-width="2" stroke-dasharray="4 5"/>
+			        <rect class="trail" x="20" y="60.5" width="320" height="3" rx="1.5" fill="#FF8C00"/>
+
+			        <g class="planet"><!-- Erde -->
+			            <circle cx="20" cy="62" r="9" fill="#2e86de"/>
+			            <ellipse cx="17" cy="59" rx="4" ry="3" fill="#27ae60"/>
+			            <ellipse cx="23" cy="66" rx="3" ry="2" fill="#27ae60"/>
+			        </g>
+			        <g class="planet"><!-- Mond -->
+			            <circle cx="60" cy="62" r="6" fill="#bdc3c7"/>
+			            <circle cx="58" cy="60" r="1.5" fill="#95a5a6"/>
+			            <circle cx="62.5" cy="64" r="1" fill="#95a5a6"/>
+			        </g>
+			        <g class="planet"><!-- Mars -->
+			            <circle cx="100" cy="62" r="7" fill="#d35400"/>
+			            <circle cx="97.5" cy="60" r="1.6" fill="#a04000"/>
+			        </g>
+			        <g class="planet"><!-- Jupiter -->
+			            <circle cx="140" cy="62" r="12" fill="#e0b27a"/>
+			            <g clip-path="url(#${prefix}-jupiter)">
+			                <rect x="126" y="55" width="28" height="2.5" fill="#b9835a"/>
+			                <rect x="126" y="62" width="28" height="3" fill="#b9835a"/>
+			                <circle cx="145" cy="67.5" r="2" fill="#c0392b"/>
+			            </g>
+			        </g>
+			        <g class="planet"><!-- Saturn -->
+			            <ellipse cx="180" cy="62" rx="16" ry="4" fill="none" stroke="#f5e6a8" stroke-width="2"/>
+			            <circle cx="180" cy="62" r="8" fill="#f4d03f"/>
+			            <path d="M164 62 A16 4 0 0 0 196 62" fill="none" stroke="#f5e6a8" stroke-width="2"/>
+			        </g>
+			        <g class="planet"><!-- Uranus -->
+			            <circle cx="220" cy="62" r="8" fill="#7fdbda"/>
+			        </g>
+			        <g class="planet"><!-- Neptun -->
+			            <circle cx="260" cy="62" r="8" fill="#3867d6"/>
+			            <ellipse cx="262" cy="60" rx="2.5" ry="1.5" fill="#1e3799"/>
+			        </g>
+			        <g class="planet"><!-- Pluto -->
+			            <circle cx="300" cy="62" r="4.5" fill="#d9c3a5"/>
+			        </g>
+			        <g class="planet"><!-- Sterne -->
+			            <polygon points="340,52 342.35,58.76 349.51,58.91 343.8,63.24 345.88,70.09 340,66 334.12,70.09 336.2,63.24 330.49,58.91 337.65,58.76" fill="#f1c40f"/>
+			        </g>
+
+			        <g class="rocket">
+			            <text x="0" y="0" font-size="20" text-anchor="middle" dominant-baseline="central" transform="rotate(45)">🚀</text>
+			        </g>
+			    </svg>`;
+			}
+
+			function createJourneyPanel(el) {
+			    el.innerHTML = `
+			        <div class="space-head">
+			            <span>🚀 Weltraum-Reise</span>
+			            <span class="space-gain"></span>
+			            <span class="space-trips"></span>
+			        </div>
+			        ${journeySVG(el.id)}
+			        <div class="space-info"><span class="space-next"></span><span class="space-fuel"></span></div>
+			        <div class="fuel-track"><div class="fuel-bar"></div></div>`;
+			}
+
+			function renderJourney(panel, fuel, gain, trips = journey.trips) {
+			    const clamped = Math.max(0, Math.min(fuel, JOURNEY_MAX));
+			    const position = clamped / FUEL_PER_STATION;
+			    const x = 20 + position * 40;
+			    const reached = Math.floor(position);
+			    const finished = clamped >= JOURNEY_MAX;
+
+			    panel.querySelector('.rocket').style.transform = `translate(${x}px, 30px)`;
+			    panel.querySelector('.trail').style.transform = `scaleX(${(x - 20) / 320})`;
+			    panel.querySelectorAll('.planet').forEach((planet, i) => {
+			        planet.style.opacity = i <= reached ? '1' : '0.4';
+			    });
+
+			    panel.querySelector('.space-gain').textContent = gain ? `+${gain} ⛽` : '';
+			    panel.querySelector('.space-trips').textContent = trips > 0 ? `${trips}× geschafft` : '';
+			    panel.querySelector('.space-next').textContent = finished
+			        ? 'Ziel erreicht: Sterne ✨'
+			        : `Nächstes Ziel: ${STATIONS[reached + 1].name}`;
+			    panel.querySelector('.space-fuel').textContent = finished
+			        ? 'Neue Reise nächste Runde'
+			        : `⛽ ${clamped % FUEL_PER_STATION} / ${FUEL_PER_STATION}`;
+			    panel.querySelector('.fuel-bar').style.width = (finished ? 100 : (clamped % FUEL_PER_STATION) / FUEL_PER_STATION * 100) + '%';
+			}
+
+			// Treibstoff pro Runde: 1 fürs Schaffen, +1 bei höchstens 2 Fehlern, +1 bei Perfekt
+			function fuelForRound(extra) {
+			    return 1 + (extra <= 2 ? 1 : 0) + (extra <= 0 ? 1 : 0);
+			}
+
+			// Laufende Reise-Animationen abbrechen (z. B. wenn schnell "Nochmal" gedrückt wird),
+			// damit Ankunfts-Ton und -Meldung nicht mitten in die nächste Runde platzen
+			function clearJourneyTimers() {
+			    journeyTimers.forEach(clearTimeout);
+			    journeyTimers = [];
+			}
+			function journeyLater(fn, ms) {
+			    journeyTimers.push(setTimeout(fn, ms));
+			}
+
+			function advanceJourney(extra) {
+			    clearJourneyTimers();
+			    if (journey.fuel >= JOURNEY_MAX) journey.fuel = 0; // neue Reise beginnt
+
+			    const oldFuel = journey.fuel;
+			    const tripsBefore = journey.trips;
+			    const gain = fuelForRound(extra);
+			    const newFuel = Math.min(oldFuel + gain, JOURNEY_MAX);
+			    const oldStation = Math.floor(oldFuel / FUEL_PER_STATION);
+			    const newStation = Math.floor(newFuel / FUEL_PER_STATION);
+			    const arrived = newStation > oldStation;
+
+			    journey.fuel = newFuel;
+			    if (newFuel >= JOURNEY_MAX) journey.trips += 1;
+			    writeJSON(KEYS.journey, journey);
+
+			    const panel = $('journey-end');
+			    const banner = $('arrival-banner');
+			    banner.classList.add('hidden');
+
+			    panel.classList.add('no-anim');
+			    renderJourney(panel, oldFuel, gain, tripsBefore);
+			    void panel.offsetWidth;
+			    panel.classList.remove('no-anim');
+
+			    journeyLater(() => {
+			        // "× geschafft" erst hochzählen, wenn die Rakete wirklich angekommen ist
+			        renderJourney(panel, newFuel, gain, tripsBefore);
+			        if (!arrived) return;
+
+			        const bar = panel.querySelector('.fuel-bar');
+			        bar.style.width = '100%';
+			        journeyLater(() => {
+			            if (newFuel < JOURNEY_MAX) {
+			                bar.style.transition = 'none';
+			                bar.style.width = '0%';
+			                void bar.offsetWidth;
+			                bar.style.transition = '';
+			            }
+			            renderJourney(panel, newFuel, gain);
+			            const station = STATIONS[newStation];
+			            banner.innerHTML = `🎉 <strong>Angekommen: ${station.name}!</strong><br>${station.fact}`;
+			            banner.classList.remove('hidden');
+			            playArrival();
+			        }, 1700);
+			    }, 700);
+			}
+
+			// =====================================================================
+			// FAHRZEUG-ANIMATION & KONFETTI
+			// =====================================================================
+			function triggerVehicleAnimation(type) {
+			    const el = document.createElement('div');
+			    el.className = 'vehicle-anim';
+			    const duration = 3000;
+			    if (type === 'rocket') {
+			        el.innerHTML = '🚀';
+			        el.style.animation = `launchRocket ${duration}ms ease-in forwards`;
+			    } else if (type === 'jet') {
+			        el.innerHTML = '✈️';
+			        el.style.animation = `flyJet ${duration}ms linear forwards`;
+			    } else if (type === 'racecar') {
+			        el.innerHTML = '🏎️';
+			        el.style.animation = `driveCar ${duration}ms linear forwards`;
+			    }
+			    document.body.appendChild(el);
+			    setTimeout(() => { el.remove(); }, duration + 100);
+			}
+
+			function shootConfetti() {
+			    const confettiColors = ['#fce18a', '#ff726d', '#b48def', '#f4306d', '#4CAF50', '#3498db'];
+			    for (let i = 0; i < 80; i++) {
+			        const confetti = document.createElement('div');
+			        confetti.classList.add('confetti');
+			        confetti.style.left = Math.random() * 100 + 'vw';
+			        confetti.style.backgroundColor = confettiColors[Math.floor(Math.random() * confettiColors.length)];
+			        confetti.style.width = (Math.random() * 8 + 5) + 'px';
+			        confetti.style.height = (Math.random() * 12 + 5) + 'px';
+			        const duration = Math.random() * 2 + 2;
+			        const delay = Math.random() * 1.5;
+			        confetti.style.animationDuration = duration + 's';
+			        confetti.style.animationDelay = delay + 's';
+			        document.body.appendChild(confetti);
+			        setTimeout(() => { confetti.remove(); }, (duration + delay) * 1000);
+			    }
+			}
+
+			// =====================================================================
+			// TASTATUR (praktisch am Laptop/Tablet mit Tastatur)
+			// → oder R = richtig, ← oder F = falsch, Rücktaste oder Z = rückgängig, Esc = Menü
+			// =====================================================================
+			document.addEventListener('keydown', (e) => {
+			    if (e.metaKey || e.ctrlKey || e.altKey || e.repeat) return;
+			    if (modalOpen) {
+			        if (e.key === 'Escape') { e.preventDefault(); $('modal-no').click(); }
+			        return;
+			    }
+			    if ($('screen-game').classList.contains('hidden')) return;
+			    const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+			    if (key === 'ArrowRight' || key === 'r') { e.preventDefault(); checkAnswer(true); }
+			    else if (key === 'ArrowLeft' || key === 'f') { e.preventDefault(); checkAnswer(false); }
+			    else if (key === 'Backspace' || key === 'z') { e.preventDefault(); undoLast(); }
+			    else if (key === 'Escape') { e.preventDefault(); askBackToMenu(); }
+			});
+
+			// =====================================================================
+			// START
+			// =====================================================================
+			createJourneyPanel($('journey-start'));
+			createJourneyPanel($('journey-end'));
+			buildWheel();
+			goToMenu();
+		</script>
+	</body>
+</html>
