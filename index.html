@@ -6,11 +6,11 @@
 			name="viewport"
 			content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
 		/>
-		<!-- Meta-Tags für App-Feeling auf iOS (Zum Home-Bildschirm hinzufügen) -->
-		<meta name="apple-mobile-web-app-capable" content="yes" />
-		<meta name="mobile-web-app-capable" content="yes" />
+		<!-- Home-Bildschirm: Icon und Name. Bewusst ohne die Web-App-Meta-Tags, damit die Seite
+		     vom Icon aus als normale Safari-Seite startet (nur dort geht die Spracherkennung). -->
 		<meta name="apple-mobile-web-app-title" content="Lese-Meister" />
 		<meta name="theme-color" content="#87CEEB" />
+		<link rel="apple-touch-icon" href="icon-180.png" />
 		<meta
 			name="apple-mobile-web-app-status-bar-style"
 			content="black-translucent"
@@ -282,6 +282,17 @@
 			    font-size: 1em;
 			}
 			.space-gain { color: #FFB347; }
+			.space-reset {
+			    background: rgba(255,255,255,0.15);
+			    color: #dfe6ff;
+			    border: none;
+			    border-radius: 12px;
+			    padding: 3px 10px;
+			    font-size: 0.8em;
+			    font-weight: bold;
+			    cursor: pointer;
+			}
+			.space-reset:active { background: rgba(255,255,255,0.3); }
 			.space-trips { font-size: 0.8em; color: #f1c40f; }
 			.space-svg { width: 100%; height: auto; display: block; margin: 2px 0; }
 			.space-info {
@@ -563,6 +574,7 @@
 			    color: #2c3e50;
 			}
 			.switch-row + .switch-row { border-top: 1px solid #dde8f3; }
+			.switch-row.sub { padding-left: 18px; }
 			.switch-label { font-weight: bold; font-size: 1em; }
 			.switch-label small { display: block; font-weight: normal; font-size: 0.78em; color: #777; margin-top: 2px; }
 			.switch {
@@ -615,6 +627,8 @@
 			}
 			.listen-pill[data-state="on"] { background: #e8f8ef; color: #1e8449; animation: listenPulse 1.6s ease-in-out infinite; }
 			.listen-pill[data-state="paused"] { background: #fff3cd; color: #9a6b00; }
+			.listen-pill[data-state="wrong"] { background: #fdecea; color: #c0392b; animation: none; }
+			.listen-pill[data-state="right"] { background: #e8f8ef; color: #1e8449; animation: none; }
 			@keyframes listenPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(39,174,96,0.35); } 50% { box-shadow: 0 0 0 6px rgba(39,174,96,0); } }
 			.invisible { visibility: hidden; }
 
@@ -648,6 +662,36 @@
 			    cursor: pointer;
 			}
 			.modal-btn.no { background: #27ae60; color: white; }
+
+			/* Planeten-Wissen */
+			.planet-card {
+			    max-width: 340px;
+			    width: 86%;
+			    max-height: 88vh;
+			    max-height: 88dvh;
+			    overflow-y: auto;
+			    animation: popIn 0.4s ease;
+			}
+			.planet-pic {
+			    background: #1d2550;
+			    border-radius: 16px;
+			    padding: 8px 0 4px;
+			}
+			.planet-pic svg { display: block; margin: 0 auto; width: 120px; height: 120px; }
+			#planet-title { color: #2c3e50; margin: 12px 0 2px; font-size: 1.35em; }
+			.planet-sub { font-size: 0.9em !important; color: #8e44ad !important; margin: 0 0 6px !important; }
+			.planet-facts { list-style: none; padding: 0; margin: 6px 0 14px; text-align: left; }
+			.planet-facts li {
+			    background: #f1f8ff;
+			    border-radius: 10px;
+			    padding: 8px 10px 8px 34px;
+			    margin: 6px 0;
+			    line-height: 1.35;
+			    color: #2c3e50;
+			    position: relative;
+			}
+			.planet-facts li::before { content: "⭐"; position: absolute; left: 9px; top: 8px; }
+			.planet-ok { width: 100%; font-size: 1.25em; padding: 14px; }
 			.modal-btn.yes { background: #ecf0f1; color: #c0392b; }
 
 			.hidden { display: none !important; }
@@ -753,6 +797,10 @@
 				<button class="switch-row" id="tg-listen" role="switch" aria-checked="false" onclick="toggleListen()">
 					<span class="switch-label">🎤 Spracherkennung<small>Richtig gelesene Wörter werden automatisch grün</small></span>
 					<span class="switch"><span class="switch-text">Aus</span></span>
+				</button>
+				<button class="switch-row sub" id="tg-autowrong" role="switch" aria-checked="true" onclick="toggleAutoWrong()">
+					<span class="switch-label">❌ Falsch automatisch<small>Wird ein anderes Wort gesagt, zählt es nach einer kurzen Pause als falsch</small></span>
+					<span class="switch"><span class="switch-text">An</span></span>
 				</button>
 				<button class="switch-row" id="tg-tts" role="switch" aria-checked="true" onclick="toggleTts()">
 					<span class="switch-label">🔈 Vorlesen bei Falsch<small>Das Wort wird einmal richtig vorgesprochen</small></span>
@@ -1022,6 +1070,17 @@
 			</button>
 		</div>
 
+		<!-- PLANETEN-WISSEN (öffnet sich bei Ankunft auf einem neuen Planeten) -->
+		<div class="modal-backdrop hidden" id="planet-modal" onclick="if (event.target === this) closePlanetInfo()">
+			<div class="modal planet-card" role="dialog" aria-labelledby="planet-title">
+				<div class="planet-pic" id="planet-pic"></div>
+				<h2 id="planet-title"></h2>
+				<p class="planet-sub">Wusstest du schon?</p>
+				<ul class="planet-facts" id="planet-facts"></ul>
+				<button class="modal-btn no planet-ok" onclick="closePlanetInfo()">OK</button>
+			</div>
+		</div>
+
 		<!-- BESTÄTIGUNGS-FENSTER -->
 		<div class="modal-backdrop hidden" id="modal">
 			<div class="modal">
@@ -1037,39 +1096,51 @@
 			// =====================================================================
 			// WORTLISTEN
 			// =====================================================================
-			// Jedes Wort steht nur in EINER Stufe. Nomen (Tiere) werden großgeschrieben.
+			// Jedes Wort steht nur in EINER Stufe. Nomen werden großgeschrieben.
+			// Ausgewählt nach Häufigkeit (Duden-Korpus, Uni Leipzig: die 100 häufigsten Wörter)
+			// und danach, ob ein Kind der 2. Klasse sie kennt und braucht.
 			const wordsConfig = {
+			    // Die kürzesten und häufigsten Wörter (fast alle unter den 100 häufigsten der deutschen Sprache)
 			    leicht: [
-			        "und", "die", "der", "das", "ist", "in", "ein", "zu", "mit", "von",
-			        "auf", "es", "so", "da", "wo", "er", "sie", "wir", "wie", "an",
-			        "man", "sich", "mir", "dir", "mich", "dich", "ihr", "als", "bei", "im",
-			        "am", "zum", "zur", "vom", "beim", "hat", "haben", "war", "bin", "sind",
-			        "wird", "mein", "dein", "sein", "kein", "gut", "viel", "immer", "wieder", "heute",
-			        "ganz", "gar", "ab", "hin", "her", "weg", "ob", "weil", "etwas", "nichts",
-			        "diese", "über", "unter", "vor", "nach", "bis"
+			        "und", "die", "der", "das", "den", "dem", "ein", "ist", "in", "im",
+			        "zu", "zum", "zur", "mit", "von", "vom", "auf", "an", "am", "aus",
+			        "für", "bei", "beim", "um", "es", "er", "sie", "ich", "du", "wir",
+			        "ihr", "man", "sich", "mir", "dir", "mich", "dich", "so", "da", "wo",
+			        "wie", "was", "wer", "ja", "nein", "als", "bis", "vor", "nach", "ab",
+			        "weg", "hat", "bin", "war", "sind", "wird", "mein", "dein", "sein", "kein",
+			        "gut", "viel", "weil"
 			    ],
 			    mittel: [
-			        // Sichtwörter
-			        "nicht", "auch", "aber", "oder", "wenn", "noch", "hier", "eine", "dass", "dann",
-			        "denn", "schon", "jetzt", "alle", "mehr", "sehr", "doch", "nur", "dort", "bald",
-			        "kann", "will", "muss", "darf", "soll", "geht", "kommt", "sieht", "macht", "sagt",
-			        "einen", "einem", "unser", "jeder", "warum", "wer", "was", "fast", "lange",
+			        // Häufige Wörter mit 4–6 Buchstaben
+			        "nicht", "nichts", "auch", "aber", "oder", "wenn", "dann", "denn", "noch", "schon",
+			        "jetzt", "hier", "dort", "doch", "nur", "sehr", "mehr", "ganz", "alle", "eine",
+			        "einen", "einem", "diese", "dass", "etwas", "immer", "wieder", "heute", "haben", "über",
+			        "unter", "kann", "will", "muss", "darf", "soll", "geht", "kommt", "sieht", "macht",
+			        "sagt", "unser", "jeder", "warum", "bald", "fast", "lange", "oft", "gern", "klein",
+			        "groß", "schnell",
 			        // Tiere
 			        "Hund", "Katze", "Maus", "Kuh", "Pferd", "Fisch", "Vogel", "Hase", "Ente", "Schaf",
 			        "Ziege", "Schwein", "Bär", "Löwe", "Affe", "Igel", "Fuchs", "Wolf", "Frosch", "Biene",
 			        "Huhn", "Esel", "Tiger", "Zebra", "Eule", "Robbe", "Wal"
 			    ],
 			    schwer: [
-			        // Sichtwörter
-			        "vielleicht", "plötzlich", "natürlich", "zusammen", "morgen", "gestern", "deshalb", "eigentlich", "besonders", "nämlich",
-			        "trotzdem", "manchmal", "niemand", "jemand", "überall", "draußen", "wirklich", "endlich", "schließlich", "zwischen",
-			        "während", "obwohl", "sofort", "fröhlich", "langsam", "darum", "außerdem",
+			        // Längere häufige Wörter aus Kinderbüchern
+			        "vielleicht", "plötzlich", "natürlich", "zusammen", "morgen", "gestern", "endlich", "langsam", "sofort", "manchmal",
+			        "wirklich", "zwischen", "niemand", "jemand", "überall", "draußen", "fröhlich", "deshalb", "darum",
+			        // Tun-Wörter
+			        "spielen", "lesen", "schreiben", "laufen", "springen", "schlafen", "trinken",
 			        // Tiere
-			        "Elefant", "Giraffe", "Krokodil", "Schildkröte", "Eichhörnchen", "Schmetterling", "Nashorn", "Nilpferd", "Känguru", "Pinguin",
-			        "Papagei", "Delfin", "Dinosaurier", "Schlange", "Leopard", "Kamel", "Flamingo", "Eisbär", "Marienkäfer", "Regenwurm",
-			        "Fledermaus", "Hamster", "Meerschweinchen", "Seepferdchen", "Waschbär"
+			        "Elefant", "Giraffe", "Krokodil", "Schildkröte", "Schmetterling", "Nashorn", "Nilpferd", "Känguru", "Pinguin", "Papagei",
+			        "Delfin", "Schlange", "Leopard", "Kamel", "Flamingo", "Eisbär", "Regenwurm", "Fledermaus", "Hamster", "Waschbär"
 			    ]
 			};
+			// Wörter, die früher Standard waren und entfernt wurden (zu selten, zu abstrakt für Klasse 2
+			// oder ins Silben-Spiel umgezogen). Gespeicherte Listen werden davon bereinigt.
+			const SICHT_RETIRED = [
+			    "her", "hin", "gar", "ob",
+			    "nämlich", "eigentlich", "außerdem", "trotzdem", "schließlich", "obwohl", "während", "besonders",
+			    "Dinosaurier", "Meerschweinchen", "Eichhörnchen", "Seepferdchen", "Marienkäfer"
+			];
 
 			// Silbenwörter: Silben mit Bindestrich getrennt (Sprechsilben wie in der Fibel).
 			// Leicht und Mittel werden blau/rot eingefärbt.
@@ -1079,7 +1150,7 @@
 			const silbenConfig = {
 			    // 2 Silben, meist offene Silben
 			    leicht: [
-			        "Ma-ma", "Pa-pa",
+			        "Ma-ma", "Pa-pa", "O-ma", "O-pa",
 			        "So-fa", "Na-se", "Ro-se", "Ha-se", "Lö-we", "Ti-ger", "Ra-be", "Blu-me", "Son-ne",
 			        "Wol-ke", "Re-gen", "Ta-fel", "Ku-chen", "Ho-nig", "Ap-fel", "Bir-ne", "Kat-ze", "Pi-lot"
 			    ],
@@ -1088,11 +1159,13 @@
 			        "Ba-na-ne", "To-ma-te", "Ra-ke-te", "Me-lo-ne", "Pa-pa-gei", "Sa-la-mi", "Te-le-fon", "Do-mi-no", "Ka-ka-du",
 			        "A-na-nas", "Pin-gu-in", "Kro-ko-dil", "Ka-pi-tän", "Zi-tro-ne", "E-le-fant", "Ka-nin-chen", "Gi-tar-re", "Mo-tor-rad"
 			    ],
-			    // 3–4 Silben, mit schwierigeren Buchstabenfolgen (sch, schr, ck, ng …)
+			    // Lange Wörter (3–5 Silben) mit schwierigeren Buchstabenfolgen (sch, schr, ck, ng …)
 			    profi: [
 			        "Schmet-ter-ling", "Scho-ko-la-de", "Re-gen-bo-gen", "Ge-burts-tag", "Kar-tof-fel", "Schild-krö-te",
 			        "Feu-er-wehr", "Fle-der-maus", "Ku-schel-tier", "Hub-schrau-ber", "Erd-bee-re", "Zahn-bürs-te",
-			        "Schul-ran-zen", "Son-nen-blu-me", "Kin-der-gar-ten", "Wasch-ma-schi-ne", "Ta-schen-lam-pe", "Os-ter-ha-se"
+			        "Schul-ran-zen", "Son-nen-blu-me", "Kin-der-gar-ten", "Wasch-ma-schi-ne", "Ta-schen-lam-pe", "Os-ter-ha-se",
+			        // aus den Sichtwörtern umgezogen – zu lang, um sie auf einen Blick zu lesen
+			        "Di-no-sau-ri-er", "Meer-schwein-chen", "Eich-hörn-chen", "See-pferd-chen", "Ma-ri-en-kä-fer"
 			    ]
 			};
 
@@ -1101,7 +1174,7 @@
 			// =====================================================================
 			const LEVELS = ['leicht', 'mittel', 'schwer'];
 			const ALL_LEVELS = ['leicht', 'mittel', 'schwer', 'profi'];  // Profi gibt es nur bei Silben
-			const WORDLIST_VERSION = 2;
+			const WORDLIST_VERSION = 3;   // erhöhen, wenn sich die Standard-Sichtwörter ändern
 			const WORDS_PER_ROUND = 10;
 			const MASTER_STREAK = 3;               // so oft hintereinander richtig = kein Knackwort mehr
 			const TIMER_OPTIONS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 15, 20]; // 0 = Aus
@@ -1139,6 +1212,7 @@
 			        desc: 'Wörter auf einen Blick erkennen',
 			        defaults: wordsConfig,
 			        listVersion: WORDLIST_VERSION,
+			        retired: SICHT_RETIRED,
 			        levels: ['leicht', 'mittel', 'schwer'],
 			        derived: {},
 			        keys: { pools: 'sichtwoerterPools', stats: 'sichtwoerterStatistik', timer: 'sichtwoerterTimer', level: 'sichtwoerterStufe' },
@@ -1152,7 +1226,8 @@
 			        icon: '👏',
 			        desc: 'Wörter Silbe für Silbe lesen',
 			        defaults: silbenConfig,
-			        listVersion: 2,
+			        listVersion: 3,
+			        retired: [],
 			        levels: ['leicht', 'mittel', 'schwer', 'profi'],
 			        // Schwer = alle Wörter aus Leicht + Mittel (ohne eigene Liste)
 			        derived: { schwer: ['leicht', 'mittel'] },
@@ -1283,10 +1358,10 @@
 			    journey = readJSON(KEYS.journey, { fuel: 0, trips: 0 });
 			    if (!journey || !Number.isFinite(journey.fuel) || !Number.isFinite(journey.trips)) journey = { fuel: 0, trips: 0 };
 
-			    // sound = Töne, listen = Spracherkennung, tts = Vorlesen bei Falsch
+			    // sound = Töne, listen = Spracherkennung, autoWrong = Falsch automatisch, tts = Vorlesen bei Falsch
 			    // (Schrift & Farbe wechseln bei Sichtwörtern jetzt immer – die alte Option "variety" wird ignoriert)
 			    const saved = readJSON(KEYS.options, {});
-			    options = Object.assign({ sound: true, listen: false, tts: true }, saved && typeof saved === 'object' ? saved : {});
+			    options = Object.assign({ sound: true, listen: false, autoWrong: true, tts: true }, saved && typeof saved === 'object' ? saved : {});
 			}
 			loadAllState();
 
@@ -1394,35 +1469,34 @@
 			            activePool[level] = list.length >= 10 ? list : [...g.defaults[level]];
 			        });
 			        applyDerived(activePool);
-			    } else if (currentGame === 'silben' && data.version === 1 && data.pools) {
-			        // Silben-Version 1: Die langen Wörter aus "Schwer" wandern in die neue Stufe "Profi",
-			        // Leicht bekommt Ma-ma und Pa-pa dazu. Eigene Wörter bleiben erhalten.
-			        const old = data.pools;
-			        const leicht = validList(old.leicht);
-			        const mittel = validList(old.mittel);
-			        const profi = validList(old.schwer);
-			        activePool = {
-			            leicht: leicht.length >= 10 ? [...new Set([...g.defaults.leicht.slice(0, 2), ...leicht])] : [...g.defaults.leicht],
-			            mittel: mittel.length >= 10 ? mittel : [...g.defaults.mittel],
-			            profi: profi.length >= 10 ? profi : [...g.defaults.profi]
-			        };
-			        applyDerived(activePool);
-			        saveWords();
-			        moveBoard('silben-schwer', 'silben-profi');
-			        moveBoard('silben-knack-schwer', 'silben-knack-profi');
-			    } else if (currentGame === 'sicht') {
-			        // Altes Format der Sichtwörter: eigene Wörter behalten, neue Standardwörter ergänzen
-			        const oldPools = data.pools ? data.pools : data;
-			        activePool = {};
-			        LEVELS.forEach(level => {
-			            const otherDefaults = new Set(LEVELS.filter(l => l !== level).flatMap(l => wordsConfig[l]));
-			            const own = Array.isArray(oldPools[level]) ? oldPools[level] : [];
-			            activePool[level] = [...new Set([...wordsConfig[level], ...own.filter(w => !otherDefaults.has(w))])];
-			        });
-			        saveWords();
 			    } else {
-			        activePool = copyDefaults();
+			        // Ältere gespeicherte Liste: Neue Standardwörter übernehmen, entfernte Wörter weglassen,
+			        // selbst ergänzte Wörter (z. B. Namen) in ihrer Stufe behalten.
+			        let stored = data.pools && typeof data.pools === 'object' ? data.pools : data;
+			        if (currentGame === 'silben' && data.version === 1) {
+			            // Silben-Version 1 hatte die langen Wörter in "Schwer" – sie gehören jetzt zu "Profi"
+			            stored = { leicht: stored.leicht, mittel: stored.mittel, profi: stored.schwer };
+			            moveBoard('silben-schwer', 'silben-profi');
+			            moveBoard('silben-knack-schwer', 'silben-knack-profi');
+			        }
+			        activePool = mergeWithDefaults(stored);
+			        saveWords();
 			    }
+			}
+
+			// Alle Wörter, die je Standard waren – alles andere hat jemand selbst eingetragen
+			function knownDefaultWords() {
+			    const g = game();
+			    return new Set([...Object.values(g.defaults).flat(), ...(g.retired || [])]);
+			}
+			function mergeWithDefaults(stored) {
+			    const known = knownDefaultWords();
+			    const pools = copyDefaults();
+			    editableLevels().forEach(level => {
+			        const own = validList(stored && stored[level]).filter(w => !known.has(w));
+			        pools[level] = [...new Set([...pools[level], ...own])];
+			    });
+			    return applyDerived(pools);
 			}
 
 			// Bestenliste umbenennen (nur wenn das Ziel noch leer ist)
@@ -1755,6 +1829,14 @@
 			        markDone(btn);
 			    });
 			}
+			// ↺-Knopf direkt an der Reise im Startbildschirm
+			function askResetJourney() {
+			    showConfirm('Die Weltraum-Reise wieder bei der Erde starten? Auch „× geschafft“ wird auf 0 gesetzt.', 'Ja, neu starten', 'Abbrechen', () => {
+			        journey = { fuel: 0, trips: 0 };
+			        writeJSON(KEYS.journey, journey);
+			        renderJourney($('journey-start'), journey.fuel, 0);
+			    });
+			}
 
 			// =====================================================================
 			// BESTÄTIGUNGS-FENSTER
@@ -1783,7 +1865,8 @@
 			// iPhone: nur in Safari über einen https-Link (z. B. GitHub Pages), nicht als Datei
 			// und nicht als Web-App vom Home-Bildschirm. Die Diktierfunktion muss eingeschaltet sein.
 			// Erkennt das Gerät das richtige Wort, zählt es automatisch als richtig.
-			// "Falsch" entscheidet weiterhin ein Erwachsener (Kinderstimmen werden oft falsch verstanden).
+			// Mit "Falsch automatisch" zählt ein anderes gesagtes Wort nach einer kurzen Pause als falsch
+			// (Selbstkorrektur innerhalb der Pause ist erlaubt). Rückgängig hilft bei Fehlerkennungen.
 			const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
 			function speechSupported() { return !!SpeechRec && window.isSecureContext !== false; }
 			function isHomeScreenApp() {
@@ -1797,10 +1880,17 @@
 			const listen = {
 			    rec: null,          // aktuelle Erkennungs-Sitzung (läuft über mehrere Wörter weiter)
 			    word: null,         // Wort, auf das gerade gehört wird (null = Gehörtes wird ignoriert)
-			    prefix: '',         // was vor dem Erscheinen des Wortes schon gehört wurde
+			    prefixKey: '',      // Lautschlüssel von dem, was vor dem Erscheinen des Wortes schon gehört wurde
+			    prefixTokens: 0,    // … und wie viele Wörter das waren
 			    baseCount: 0,
 			    lastCombined: '',
 			    lastCount: 0,
+			    wrongTimer: null,   // wartet nach einem falschen Wort kurz, bevor "falsch" gewertet wird
+			    verdict: null,      // 'right' / 'wrong': Ergebnis der Spracherkennung für das aktuelle Wort
+			    flushTimer: null,   // "Nachhaken": Safari auffordern, Gehörtes herauszugeben
+			    flushGuard: null,
+			    flushes: 0,
+			    eventsSeen: false,  // meldet das Gerät, wann gesprochen wird (speechstart/speechend)?
 			    started: false,     // Sitzung läuft wirklich (onstart kam)
 			    paused: false,      // nach mehreren Fehlschlägen: wartet auf Antippen
 			    heard: '',          // zuletzt Gehörtes (klein angezeigt)
@@ -1822,10 +1912,15 @@
 			// Neues Wort erscheint: ab jetzt zählt nur, was danach gesagt wird
 			function startListening() {
 			    if (!sessionAllowed() || listen.paused || isProcessing) { updateListenPill(); return; }
+			    clearTimeout(listen.wrongTimer);
+			    listen.verdict = null;
 			    listen.word = wordsQueue[0];
-			    listen.prefix = listen.lastCombined;
+			    const baseTokens = speechTokens(listen.lastCombined);
+			    listen.prefixKey = baseTokens.map(tokenKey).join('');
+			    listen.prefixTokens = baseTokens.length;
 			    listen.baseCount = listen.lastCount;
 			    listen.heard = '';
+			    if (listen.rec && listen.started) armIdleFlush();
 			    if (!listen.rec) {
 			        // Safari braucht nach einem Abbruch einen Moment, bevor eine neue Sitzung starten kann
 			        clearTimeout(listen.timer);
@@ -1838,11 +1933,14 @@
 
 			// Während der Rückmeldung (grün/rot): Mikrofon bleibt an, Gehörtes wird aber nicht gewertet
 			function muteListening() {
+			    clearTimeout(listen.wrongTimer);
+			    clearFlush();
 			    listen.word = null;
 			}
 
 			function stopListening() {
 			    clearTimeout(listen.timer);
+			    clearTimeout(listen.wrongTimer);
 			    detachSession();
 			    listen.word = null;
 			    updateListenPill();
@@ -1851,6 +1949,7 @@
 			// Laufende Sitzung beenden und ihre späten Ereignisse ignorieren
 			function detachSession() {
 			    clearTimeout(listen.watchdog);
+			    clearFlush();
 			    const rec = listen.rec;
 			    listen.rec = null;
 			    listen.started = false;
@@ -1866,11 +1965,46 @@
 			    listen.stalls = 0;
 			}
 
+			// ---------- Nachhaken (G) ----------
+			// Safari hält Gehörtes manchmal zurück und gibt es erst heraus, wenn die Sitzung beendet wird
+			// ("richtig gelesen, aber nichts passiert"). Darum: Ist das Kind fertig mit Sprechen und kommt
+			// kein Ergebnis, wird die Sitzung mit stop() beendet – dabei liefert Safari das Gehörte –
+			// und gleich danach wieder neu zugehört.
+			const FLUSH_AFTER_SPEECH = 1200;  // ms nach Sprechende ohne Ergebnis
+			const FLUSH_IDLE = 5000;          // ms ohne Ergebnis, falls das Gerät kein Sprechende meldet
+			function clearFlush() {
+			    clearTimeout(listen.flushTimer);
+			    clearTimeout(listen.flushGuard);
+			    listen.flushTimer = null;
+			}
+			function armFlush(delay) {
+			    clearTimeout(listen.flushTimer);
+			    listen.flushTimer = setTimeout(flushSession, delay);
+			}
+			function armIdleFlush() {
+			    if (!listen.eventsSeen) armFlush(FLUSH_IDLE);
+			}
+			function flushSession() {
+			    const rec = listen.rec;
+			    if (!rec || !listen.started || !listen.word || isProcessing || modalOpen || listen.word !== wordsQueue[0]) return;
+			    listen.flushes++;
+			    try { rec.stop(); } catch (e) {}
+			    // Falls Safari auch auf stop() nicht reagiert: hart neu starten
+			    clearTimeout(listen.flushGuard);
+			    listen.flushGuard = setTimeout(() => {
+			        if (listen.rec !== rec) return;
+			        detachSession();
+			        listen.timer = setTimeout(beginSession, 300);
+			        updateListenPill();
+			    }, 2000);
+			}
+
 			function beginSession() {
 			    clearTimeout(listen.timer);
 			    if (!sessionAllowed() || listen.paused || listen.rec) { updateListenPill(); return; }
 			    // Neue Sitzung = neue Ergebnisliste
-			    listen.prefix = '';
+			    listen.prefixKey = '';
+			    listen.prefixTokens = 0;
 			    listen.baseCount = 0;
 			    listen.lastCombined = '';
 			    listen.lastCount = 0;
@@ -1887,13 +2021,30 @@
 			    }
 			    const markStarted = () => {
 			        if (listen.rec !== rec) return;
+			        const first = !listen.started;
 			        listen.started = true;
 			        listen.stalls = 0;
 			        clearTimeout(listen.watchdog);
+			        if (first && listen.word) armIdleFlush();
 			        updateListenPill();
 			    };
 			    rec.onstart = markStarted;
 			    rec.onaudiostart = markStarted;
+			    // Sprechbeginn / Sprechende (wenn das Gerät sie meldet)
+			    const speechBegins = () => {
+			        if (listen.rec !== rec) return;
+			        listen.eventsSeen = true;
+			        clearTimeout(listen.flushTimer);
+			    };
+			    const speechEnds = () => {
+			        if (listen.rec !== rec) return;
+			        listen.eventsSeen = true;
+			        if (listen.word && !isProcessing) armFlush(FLUSH_AFTER_SPEECH);
+			    };
+			    rec.onspeechstart = speechBegins;
+			    rec.onsoundstart = speechBegins;
+			    rec.onspeechend = speechEnds;
+			    rec.onsoundend = speechEnds;
 			    rec.onresult = (event) => onSpeechResult(event, rec);
 			    rec.onerror = (event) => onSpeechError(event, rec);
 			    rec.onend = () => onSpeechEnd(rec);
@@ -1923,6 +2074,7 @@
 
 			function onSpeechResult(event, rec) {
 			    if (listen.rec !== rec) return;
+			    clearTimeout(listen.flushTimer);
 			    const results = event.results;
 			    let combined = '';
 			    for (let i = 0; i < results.length; i++) {
@@ -1934,8 +2086,8 @@
 			    if (!listen.word || !roundActive || isProcessing || modalOpen || listen.word !== wordsQueue[0]) return;
 
 			    // Nur das Neue seit dem Erscheinen des Wortes betrachten
-			    const candidates = [];
-			    if (combined.startsWith(listen.prefix)) candidates.push(combined.slice(listen.prefix.length));
+			    const newPart = newTokensSinceWord(combined).join(' ');
+			    const candidates = [newPart];
 			    let fresh = '';
 			    for (let i = listen.baseCount; i < results.length; i++) {
 			        const result = results[i];
@@ -1944,13 +2096,61 @@
 			        for (let j = 0; j < result.length; j++) candidates.push(result[j].transcript);
 			    }
 			    candidates.push(fresh);
-			    listen.heard = (candidates[0] || fresh).trim();
+			    listen.heard = newPart || fresh.trim();
 			    updateListenPill();
 
 			    if (candidates.some(text => transcriptMatches(text, listen.word))) {
-			        listen.heard = '✓ ' + listen.heard;
+			        listen.verdict = 'right';
 			        handleAnswer(true);
+			        updateListenPill();
+			    } else {
+			        scheduleAutoWrong();
+			        armIdleFlush();
 			    }
+			}
+			// Das iPhone verbessert bereits Gehörtes oft nachträglich: Großschreibung, Satzzeichen oder
+			// "so fa" → "Sofa". Darum wird über den Lautschlüssel (ohne Leerzeichen) verglichen, was schon
+			// vor dem Wort da war, und nur der Rest gewertet. Klappt das nicht, werden einfach so viele
+			// Wörter abgezogen, wie vorher gehört wurden.
+			function newTokensSinceWord(combined) {
+			    const tokens = speechTokens(combined);
+			    if (!listen.prefixKey) return tokens;
+			    const keys = tokens.map(tokenKey);
+			    if (keys.join('').startsWith(listen.prefixKey)) {
+			        let length = 0, k = 0;
+			        while (k < tokens.length && length < listen.prefixKey.length) { length += keys[k].length; k++; }
+			        return tokens.slice(k);
+			    }
+			    return tokens.slice(listen.prefixTokens);
+			}
+
+			// ---------- Falsch automatisch ----------
+			// Füllwörter zählen nicht als Antwort
+			const FILLER_WORDS = new Set(['äh', 'ähm', 'öh', 'öhm', 'hm', 'hmm', 'mh', 'mhm', 'em', 'ehm', 'eh', 'äm', 'ah']);
+			function meaningfulTokens(text) {
+			    return speechTokens(text).filter(t => !FILLER_WORDS.has(t.toLowerCase()));
+			}
+			// Nach jedem Gehörten neu starten: Erst wenn eine Weile nichts Neues kommt, wird entschieden.
+			// So kann das Kind sich verbessern ("Ananas … Banane") oder langsam in Silben lesen.
+			function scheduleAutoWrong() {
+			    clearTimeout(listen.wrongTimer);
+			    if (!options.autoWrong || !listen.word) return;
+			    const tokens = meaningfulTokens(listen.heard);
+			    if (!tokens.length) return;
+			    const heardKey = matchKey(tokens.map(t => NUMBER_WORDS[t] || t).join(''));
+			    const targetKey = matchKey(listen.word.replace(/-/g, ''));
+			    // Gehörtes ist der Anfang des Wortes (z. B. "Ba na" bei Banane) → Kind liest vermutlich noch
+			    const stillReading = heardKey.length > 0 && heardKey.length < targetKey.length && targetKey.startsWith(heardKey);
+			    const pause = isSilben() ? 2000 : 1500;
+			    const delay = stillReading ? pause + 1500 : pause;
+			    const word = listen.word;
+			    listen.wrongTimer = setTimeout(() => {
+			        if (!options.autoWrong || !roundActive || isProcessing || modalOpen ||
+			            listen.word !== word || wordsQueue[0] !== word) return;
+			        listen.verdict = 'wrong';
+			        handleAnswer(false);
+			        updateListenPill();
+			    }, delay);
 			}
 
 			function onSpeechError(event, rec) {
@@ -1973,6 +2173,7 @@
 			function onSpeechEnd(rec) {
 			    if (listen.rec !== rec) return;
 			    clearTimeout(listen.watchdog);
+			    clearFlush();
 			    listen.rec = null;
 			    listen.started = false;
 			    if (!sessionAllowed() || listen.paused) { updateListenPill(); return; }
@@ -1994,8 +2195,14 @@
 			    let text, state;
 			    if (listen.paused) {
 			        text = '🎤 Pause – zum Zuhören antippen'; state = 'paused';
+			    } else if (listen.verdict) {
+			        // Ergebnis der Spracherkennung kurz anzeigen: ✓ oder ✗ und was gehört wurde
+			        text = `${listen.verdict === 'right' ? '✓' : '✗'} „${shorten(listen.heard, 24)}“`;
+			        state = listen.verdict;
 			    } else if (listen.rec && listen.started) {
-			        text = listen.heard ? `🎤 „${shorten(listen.heard, 26)}“` : '🎤 Ich höre zu …'; state = 'on';
+			        // Silben: Tipp aus der Silbenmethode – am Ende das ganze Wort sagen (versteht das iPhone viel besser)
+			        const idle = isSilben() ? '🎤 Silben lesen, dann das ganze Wort' : '🎤 Ich höre zu …';
+			        text = listen.heard ? `🎤 „${shorten(listen.heard, 26)}“` : idle; state = 'on';
 			    } else {
 			        text = listen.heard ? `🎤 „${shorten(listen.heard, 26)}“` : '🎤 …'; state = 'wait';
 			    }
@@ -2030,22 +2237,52 @@
 			        .replace(/b$/, 'p')
 			        .replace(/g$/, 'k');
 			}
+			// Silben-Spiel: Laute statt Buchstaben vergleichen. Beim langsamen Silbenlesen schreibt die
+			// Erkennung oft ähnlich klingende Stücke ("Bar – nah – Nee" statt "Ba – na – ne", "Tiga" statt
+			// "Tiger"). Was gleich klingt, zählt. Nur bei Silben – bei Sichtwörtern bleibt es genau
+			// (sonst würde z. B. "da" für "der" durchgehen).
+			function soundKey(text) {
+			    return String(text).toLowerCase()
+			        .replace(/ß/g, 'ss')
+			        .replace(/ph/g, 'f')
+			        .replace(/th/g, 't')
+			        .replace(/v/g, 'f')
+			        .replace(/[^a-zäöü]/g, '')
+			        .replace(/äu|eu/g, 'oi')                 // Häuser / heute
+			        .replace(/ai/g, 'ei')                    // Mai / mei
+			        .replace(/ie/g, 'i')
+			        .replace(/y/g, 'i')
+			        .replace(/ä/g, 'e').replace(/ö/g, 'e').replace(/ü/g, 'i')
+			        .replace(/ck/g, 'k').replace(/tz/g, 'z').replace(/qu/g, 'kw').replace(/x/g, 'ks').replace(/c(?!h)/g, 'k')
+			        .replace(/([aeiou])h(?![aeiou])/g, '$1')  // Dehnungs-h: "nah" = "na"
+			        .replace(/(.)\1+/g, '$1')                 // doppelte Buchstaben: "Nee" = "ne"
+			        .replace(/er(?![aeiou])/g, 'a')            // "-er" klingt wie "a": "Tiger" = "Tiga"
+			        .replace(/([aiou])r(?![aeiou])/g, '$1')    // "Bar" = "Ba"
+			        .replace(/dt/g, 't')
+			        .replace(/b(?![aeiou])/g, 'p')             // hart gesprochenes Ende: "Hub" = "Hupp"
+			        .replace(/d(?![aeiou])/g, 't')
+			        .replace(/g(?![aeiou])/g, 'k')
+			        .replace(/(.)\1+/g, '$1');
+			}
+			function matchKey(text) { return isSilben() ? soundKey(text) : phoneticKey(text); }
 			const NUMBER_WORDS = { '1': 'ein', '2': 'zwei', '3': 'drei', '4': 'vier', '5': 'fünf', '10': 'zehn' };
+			function speechTokens(text) { return String(text).split(/[\s\-–—.,!?;:"„“'()…]+/).filter(Boolean); }
+			function tokenKey(token) { return phoneticKey(NUMBER_WORDS[token] || token); }
 			// Passt das Gehörte zum Wort? Auch langsam in Silben gelesen ("Ba – na – ne") zählt.
 			function transcriptMatches(transcript, word) {
-			    const target = phoneticKey(String(word).replace(/-/g, ''));
+			    const target = matchKey(String(word).replace(/-/g, ''));
 			    if (!target) return false;
-			    const tokens = String(transcript)
-			        .split(/[\s\-–—.,!?;:"„“'()]+/)
-			        .map(t => NUMBER_WORDS[t] || t)
-			        .map(phoneticKey)
-			        .filter(Boolean);
+			    const tokens = speechTokens(transcript).map(t => NUMBER_WORDS[t] || t);
+			    // Bei Silben dürfen mehr Stücke zusammenkommen (Kinder wiederholen Silben: "Ba … Ba na ne")
+			    const maxParts = isSilben() ? 8 : 6;
 			    for (let i = 0; i < tokens.length; i++) {
 			        let joined = '';
-			        for (let j = i; j < Math.min(tokens.length, i + 6); j++) {
+			        for (let j = i; j < Math.min(tokens.length, i + maxParts); j++) {
+			            // Silben erst zusammensetzen, dann vergleichen: "Son ne" → "Sonne", "Gi tar re" → "Gitarre"
 			            joined += tokens[j];
-			            if (joined === target) return true;
-			            if (joined.length > target.length) break;
+			            const key = matchKey(joined);
+			            if (key === target) return true;
+			            if (key.length > target.length + 2) break;
 			        }
 			    }
 			    return false;
@@ -2074,6 +2311,7 @@
 			}
 			// Liest das Wort (ohne Bindestriche) einmal langsam vor und ruft danach done() auf
 			function speakWord(word, done) {
+			    ttsUnlocked = true;
 			    cancelSpeech();
 			    const token = speechToken;
 			    let finished = false;
@@ -2108,6 +2346,11 @@
 			    voiceMessage = '';
 			    saveOptions();
 			    if (options.listen) probeMicrophone();
+			    updateVoiceUI();
+			}
+			function toggleAutoWrong() {
+			    options.autoWrong = !options.autoWrong;
+			    saveOptions();
 			    updateVoiceUI();
 			}
 			function toggleTts() {
@@ -2150,6 +2393,8 @@
 			}
 			function updateVoiceUI() {
 			    setSwitch('tg-listen', options.listen && speechSupported(), !speechSupported());
+			    setSwitch('tg-autowrong', options.autoWrong, false);
+			    $('tg-autowrong').classList.toggle('hidden', !(options.listen && speechSupported()));
 			    setSwitch('tg-tts', options.tts && ttsSupported(), !ttsSupported());
 			    let hint = voiceMessage;
 			    if (!hint && !speechSupported()) {
@@ -2182,6 +2427,7 @@
 			    initAudio();
 			    requestPersistentStorage();
 			    cancelSpeech();
+			    unlockSpeechOutput();
 			    resetListenTrouble();
 			    loadWords();
 			    mode = mode || 'normal';
@@ -2223,6 +2469,7 @@
 			    updateUndoButton();
 			    showScreen('screen-game');
 			    clockStart();
+			    keepScreenOn();
 			    showWord();
 			}
 
@@ -2431,6 +2678,7 @@
 			    stopWordTimer();
 			    stopListening();
 			    cancelSpeech();
+			    allowScreenOff();
 			    clockPause();
 			    if (pendingTimeout) { clearTimeout(pendingTimeout); pendingTimeout = null; }
 			    undoStack = [];
@@ -2502,6 +2750,7 @@
 			        stopListening();
 			    } else if (roundActive && !modalOpen) {
 			        clockResume();
+			        keepScreenOn();   // Safari gibt die Sperre beim Verlassen der Seite automatisch frei
 			        if (!isProcessing) { resumeWordTimer(); startListening(); }
 			    }
 			});
@@ -2525,6 +2774,7 @@
 			    deferredNext = false;
 			    stopWordTimer();
 			    stopListening();
+			    allowScreenOff();
 			    clockPause();
 			    undoStack = [];
 			    updateUndoButton();
@@ -2723,12 +2973,13 @@
 			    </svg>`;
 			}
 
-			function createJourneyPanel(el) {
+			function createJourneyPanel(el, withReset) {
 			    el.innerHTML = `
 			        <div class="space-head">
 			            <span>🚀 Weltraum-Reise</span>
 			            <span class="space-gain"></span>
 			            <span class="space-trips"></span>
+			            ${withReset ? '<button class="space-reset" onclick="askResetJourney()" aria-label="Weltraum-Reise neu starten">↺ Neu</button>' : ''}
 			        </div>
 			        ${journeySVG(el.id)}
 			        <div class="space-info"><span class="space-next"></span><span class="space-fuel"></span></div>
@@ -2818,8 +3069,167 @@
 			            banner.innerHTML = `🎉 <strong>Angekommen: ${station.name}!</strong><br>${station.fact}`;
 			            banner.classList.remove('hidden');
 			            playArrival();
+			            // Fenster mit Planeten-Wissen – bei jeder Reise andere Fakten
+			            journeyLater(() => showPlanetInfo(newStation, tripsBefore), 900);
 			        }, 1700);
 			    }, 700);
+			}
+
+			// =====================================================================
+			// PLANETEN-WISSEN (Fenster bei Ankunft auf einem neuen Planeten)
+			// =====================================================================
+			// Je Planet 6 kurze, kindgerechte Fakten. Pro Ankunft werden 3 gezeigt –
+			// bei der nächsten Reise die anderen 3, damit es immer etwas Neues gibt.
+			// (Der Satz im gelben Ankunfts-Kasten steht in STATIONS und kommt hier nicht noch einmal vor.)
+			const PLANET_INFO = {
+			    Mond: {
+			        title: 'Willkommen auf dem Mond!',
+			        facts: [
+			            'Der Mond ist ungefähr 384.000 Kilometer von der Erde entfernt.',
+			            'Auf dem Mond gibt es keine Luft zum Atmen.',
+			            '12 Menschen sind schon auf dem Mond herumgelaufen.',
+			            'Der Mond leuchtet nicht selbst. Er wird von der Sonne angestrahlt.',
+			            'Auf dem Mond gibt es keinen Wind. Darum sind die Fußspuren der Astronauten immer noch da.',
+			            'Der Mond zeigt der Erde immer dieselbe Seite.'
+			        ]
+			    },
+			    Mars: {
+			        title: 'Willkommen auf dem Mars!',
+			        facts: [
+			            'Auf dem Mars steht der größte Vulkan im Sonnensystem. Er ist mehr als doppelt so hoch wie der höchste Berg der Erde.',
+			            'Der Mars hat zwei kleine Monde. Sie heißen Phobos und Deimos.',
+			            'Ein Tag auf dem Mars dauert nur ein bisschen länger als bei uns: etwa 24 Stunden und 40 Minuten.',
+			            'Auf dem Mars fahren Roboter-Fahrzeuge herum. Sie heißen Rover und machen Fotos.',
+			            'Auf dem Mars ist es meistens eisig kalt – oft kälter als minus 60 Grad.',
+			            'Auf dem Mars ist der Sonnenuntergang blau.'
+			        ]
+			    },
+			    Jupiter: {
+			        title: 'Willkommen beim Jupiter!',
+			        facts: [
+			            'Jupiter hat keinen festen Boden. Er besteht vor allem aus Gas.',
+			            'Der rote Fleck auf Jupiter ist ein riesiger Sturm. Er ist größer als die ganze Erde.',
+			            'Jupiter hat über 90 Monde.',
+			            'Ein Tag auf Jupiter dauert nur etwa 10 Stunden.',
+			            'Auch Jupiter hat Ringe. Sie sind aber ganz dünn und schwach.',
+			            'Der Jupitermond Ganymed ist der größte Mond im Sonnensystem. Er ist sogar größer als der Planet Merkur.'
+			        ]
+			    },
+			    Saturn: {
+			        title: 'Willkommen beim Saturn!',
+			        facts: [
+			            'Saturn ist so leicht, dass er in einer riesigen Badewanne schwimmen würde.',
+			            'Saturn hat mehr Monde als jeder andere Planet – über 200!',
+			            'Der größte Saturnmond heißt Titan. Er ist größer als der Planet Merkur.',
+			            'Auf dem Mond Titan gibt es Seen. Sie sind aber nicht aus Wasser, sondern aus flüssigem Gas.',
+			            'Saturn ist der zweitgrößte Planet in unserem Sonnensystem.',
+			            'Ein Tag auf Saturn dauert nur etwa 10 und eine halbe Stunde.'
+			        ]
+			    },
+			    Uranus: {
+			        title: 'Willkommen beim Uranus!',
+			        facts: [
+			            'Uranus sieht blaugrün aus. Das kommt von einem Gas in seiner Luft, dem Methan.',
+			            'Uranus ist ein Eisriese. Dort kann es bis zu minus 224 Grad kalt werden.',
+			            'Uranus hat auch Ringe. Sie sind aber sehr dunkel und dünn.',
+			            'Für eine Runde um die Sonne braucht Uranus 84 Jahre.',
+			            'Uranus war der erste Planet, der mit einem Fernrohr entdeckt wurde.',
+			            'Viele Uranusmonde sind nach Figuren aus Theaterstücken benannt, zum Beispiel Titania und Oberon.'
+			        ]
+			    },
+			    Neptun: {
+			        title: 'Willkommen beim Neptun!',
+			        facts: [
+			            'Neptun ist der Planet, der am weitesten von der Sonne entfernt ist.',
+			            'Für eine Runde um die Sonne braucht Neptun 165 Jahre.',
+			            'Neptun wurde zuerst durch Rechnen gefunden – und erst danach im Fernrohr gesehen.',
+			            'Neptuns größter Mond heißt Triton. Er kreist rückwärts um den Planeten.',
+			            'Bisher war nur eine einzige Raumsonde bei Neptun. Sie heißt Voyager 2.',
+			            'Neptun ist ungefähr viermal so breit wie die Erde.'
+			        ]
+			    },
+			    Pluto: {
+			        title: 'Willkommen auf dem Pluto!',
+			        facts: [
+			            'Auf Pluto gibt es eine riesige Eisfläche, die aussieht wie ein Herz.',
+			            'Für eine Runde um die Sonne braucht Pluto 248 Jahre.',
+			            'Pluto ist so weit weg, dass das Sonnenlicht etwa 5 Stunden bis dorthin braucht.',
+			            'Pluto hat fünf Monde. Der größte heißt Charon.',
+			            'Pluto wurde 1930 von einem jungen Mann namens Clyde Tombaugh entdeckt.',
+			            'Im Jahr 2015 ist die Raumsonde New Horizons an Pluto vorbeigeflogen und hat Fotos geschickt.'
+			        ]
+			    },
+			    Sterne: {
+			        title: 'Willkommen bei den Sternen!',
+			        facts: [
+			            'Unsere Sonne ist auch ein Stern – der Stern, der uns am nächsten ist.',
+			            'Der nächste Stern nach der Sonne heißt Proxima Centauri. Sein Licht braucht über 4 Jahre bis zu uns.',
+			            'Viele Sterne sind viel größer als unsere Sonne.',
+			            'Sterne funkeln, weil sich die Luft über uns bewegt.',
+			            'Sterne haben verschiedene Farben: Sehr heiße Sterne leuchten bläulich, kühlere rötlich.',
+			            'In einer dunklen Nacht kann man ohne Fernrohr mehrere tausend Sterne sehen.'
+			        ]
+			    }
+			};
+
+			// Große Planeten-Bilder für das Fenster (gleiche Farben wie auf der Reise-Karte)
+			function planetPicture(name) {
+			    const stars = '<g fill="#fff" opacity="0.7"><circle cx="12" cy="14" r="1.2"/><circle cx="104" cy="20" r="1"/><circle cx="20" cy="100" r="1"/><circle cx="108" cy="96" r="1.3"/><circle cx="96" cy="8" r="0.8"/></g>';
+			    const shapes = {
+			        Mond: `<circle cx="60" cy="60" r="38" fill="#bdc3c7"/>
+			            <circle cx="47" cy="49" r="8" fill="#95a5a6"/><circle cx="72" cy="69" r="6" fill="#95a5a6"/>
+			            <circle cx="66" cy="40" r="4" fill="#95a5a6"/><circle cx="45" cy="75" r="3.5" fill="#95a5a6"/>`,
+			        Mars: `<circle cx="60" cy="60" r="38" fill="#d35400"/>
+			            <ellipse cx="60" cy="25" rx="11" ry="4" fill="#fdebd0"/>
+			            <circle cx="47" cy="55" r="8" fill="#a04000"/><circle cx="72" cy="72" r="6" fill="#a04000"/><circle cx="74" cy="47" r="3.5" fill="#a04000"/>`,
+			        Jupiter: `<defs><clipPath id="pp-jupiter"><circle cx="60" cy="60" r="44"/></clipPath></defs>
+			            <circle cx="60" cy="60" r="44" fill="#e0b27a"/>
+			            <g clip-path="url(#pp-jupiter)" fill="#b9835a">
+			                <rect x="10" y="34" width="100" height="6"/><rect x="10" y="50" width="100" height="8"/>
+			                <rect x="10" y="68" width="100" height="6"/><rect x="10" y="84" width="100" height="4"/>
+			                <ellipse cx="75" cy="78" rx="9" ry="5.5" fill="#c0392b"/>
+			            </g>`,
+			        Saturn: `<g transform="rotate(-15 60 60)">
+			                <path d="M6 60 A54 14 0 0 1 114 60" fill="none" stroke="#f5e6a8" stroke-width="5"/>
+			                <circle cx="60" cy="60" r="30" fill="#f4d03f"/>
+			                <rect x="31" y="52" width="58" height="5" fill="#e5be2e" rx="2"/>
+			                <path d="M6 60 A54 14 0 0 0 114 60" fill="none" stroke="#f5e6a8" stroke-width="5"/>
+			            </g>`,
+			        Uranus: `<circle cx="60" cy="60" r="36" fill="#7fdbda"/>
+			            <ellipse cx="60" cy="60" rx="7" ry="52" fill="none" stroke="rgba(255,255,255,0.65)" stroke-width="2.5"/>`,
+			        Neptun: `<circle cx="60" cy="60" r="36" fill="#3867d6"/>
+			            <ellipse cx="70" cy="52" rx="8" ry="5" fill="#1e3799"/>
+			            <path d="M30 66 L66 66 M48 76 L88 76" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="2.5" stroke-linecap="round"/>`,
+			        Pluto: `<circle cx="60" cy="60" r="28" fill="#d9c3a5"/>
+			            <path d="M66 74 C56 66 56 58 61 56 C64 55 66 57 67 59 C68 57 70 55 73 56 C78 58 77 66 66 74 Z" fill="#f7efe3"/>
+			            <circle cx="48" cy="52" r="4" fill="#b59b7c"/>`,
+			        Sterne: `<g fill="#f1c40f">
+			                <polygon points="60,22 67,44 90,44 72,58 79,80 60,67 41,80 48,58 30,44 53,44"/>
+			                <polygon points="24,70 27,78 35,78 29,83 31,91 24,86 17,91 19,83 13,78 21,78" fill="#ffffff"/>
+			                <polygon points="96,74 99,81 106,81 100,85 102,92 96,88 90,92 92,85 86,81 93,81" fill="#aed6f1"/>
+			            </g>`
+			    };
+			    return `<svg viewBox="0 0 120 120" width="120" height="120" aria-hidden="true">${stars}${shapes[name] || ''}</svg>`;
+			}
+
+			let planetOpen = false;
+			function showPlanetInfo(stationIndex, tripNumber) {
+			    const station = STATIONS[stationIndex];
+			    const info = station && PLANET_INFO[station.name];
+			    if (!info) return;
+			    const count = 3;
+			    const start = (tripNumber * count) % info.facts.length;
+			    const facts = Array.from({ length: count }, (_, i) => info.facts[(start + i) % info.facts.length]);
+			    $('planet-pic').innerHTML = planetPicture(station.name);
+			    $('planet-title').textContent = info.title;
+			    $('planet-facts').innerHTML = facts.map(f => `<li>${escapeHTML(f)}</li>`).join('');
+			    $('planet-modal').classList.remove('hidden');
+			    $('planet-modal').querySelector('.planet-card').scrollTop = 0;
+			    planetOpen = true;
+			}
+			function closePlanetInfo() {
+			    $('planet-modal').classList.add('hidden');
+			    planetOpen = false;
 			}
 
 			// =====================================================================
@@ -2935,10 +3345,40 @@
 			// =====================================================================
 			// IPHONE / SAFARI
 			// =====================================================================
+			// Bildschirm bleibt während einer Runde an. Wichtig mit Spracherkennung: Ohne Antippen
+			// würde das iPhone sonst nach 30 Sekunden sperren und das Mikrofon beenden.
+			let wakeLock = null;
+			async function keepScreenOn() {
+			    try {
+			        if (!('wakeLock' in navigator) || wakeLock || !roundActive) return;
+			        wakeLock = await navigator.wakeLock.request('screen');
+			        wakeLock.addEventListener('release', () => { wakeLock = null; });
+			    } catch (e) { wakeLock = null; }
+			}
+			function allowScreenOff() {
+			    const lock = wakeLock;
+			    wakeLock = null;
+			    try { if (lock) lock.release(); } catch (e) {}
+			}
+
+			// iPhone spielt Sprachausgabe erst ab, wenn sie einmal durch Antippen gestartet wurde.
+			// Deshalb beim Start der Runde stumm "freischalten" – sonst bliebe das Vorlesen nach einem
+			// automatisch erkannten Falsch (ohne Antippen) still.
+			let ttsUnlocked = false;
+			function unlockSpeechOutput() {
+			    if (ttsUnlocked || !ttsWanted()) return;
+			    ttsUnlocked = true;
+			    try {
+			        const utterance = new SpeechSynthesisUtterance(' ');
+			        utterance.volume = 0;
+			        utterance.lang = 'de-DE';
+			        window.speechSynthesis.speak(utterance);
+			    } catch (e) {}
+			}
 			// Ohne diesen (leeren) Touch-Listener zeigt Safari auf dem iPhone keinen :active-Druckeffekt
 			document.addEventListener('touchstart', () => {}, { passive: true });
 
-			// App-Symbol für "Zum Home-Bildschirm" und Tab-Symbol (wird hier gezeichnet, keine Extra-Datei nötig)
+			// Tab-Symbol im Browser (wird hier gezeichnet). Das Home-Bildschirm-Icon ist icon-180.png im <head>.
 			(function addAppIcon() {
 			    try {
 			        const canvas = document.createElement('canvas');
@@ -2958,12 +3398,10 @@
 			        ctx.fillStyle = '#D32F2F';
 			        ctx.fillText('b', 112, 92);
 			        const url = canvas.toDataURL('image/png');
-			        ['apple-touch-icon', 'icon'].forEach(rel => {
-			            const link = document.createElement('link');
-			            link.rel = rel;
-			            link.href = url;
-			            document.head.appendChild(link);
-			        });
+			        const link = document.createElement('link');
+			        link.rel = 'icon';
+			        link.href = url;
+			        document.head.appendChild(link);
 			    } catch (e) {}
 			})();
 
@@ -2973,6 +3411,10 @@
 			// =====================================================================
 			document.addEventListener('keydown', (e) => {
 			    if (e.metaKey || e.ctrlKey || e.altKey || e.repeat) return;
+			    if (planetOpen) {
+			        if (e.key === 'Enter' || e.key === 'Escape' || e.key === ' ') { e.preventDefault(); closePlanetInfo(); }
+			        return;
+			    }
 			    if (modalOpen) {
 			        if (e.key === 'Escape') { e.preventDefault(); $('modal-no').click(); }
 			        return;
@@ -2988,7 +3430,7 @@
 			// =====================================================================
 			// START
 			// =====================================================================
-			createJourneyPanel($('journey-start'));
+			createJourneyPanel($('journey-start'), true);
 			createJourneyPanel($('journey-end'));
 			buildWheel();
 			goToMenu();
