@@ -35,6 +35,10 @@
 			    user-select: none;
 			    -webkit-touch-callout: none;
 			    overflow: hidden;
+			    /* iPhone: Schrift im Querformat nicht automatisch vergrößern, kein Gummiband-Effekt */
+			    -webkit-text-size-adjust: 100%;
+			    text-size-adjust: 100%;
+			    overscroll-behavior: none;
 			}
 			button {
 			    font-family: inherit;
@@ -527,6 +531,92 @@
 			    cursor: pointer;
 			}
 			.small-btn:active { transform: scale(0.97); }
+			.small-btn.neutral { color: #2c3e50; }
+			.settings-derived {
+			    text-align: left;
+			    font-size: 0.95em;
+			    color: #2c3e50;
+			    background: #f1f8ff;
+			    border-radius: 10px;
+			    padding: 12px;
+			    margin: 8px 0;
+			}
+
+			/* Sprache: An/Aus-Schalter im Menü */
+			.voice-box {
+			    background: #f1f8ff;
+			    border-radius: 12px;
+			    padding: 4px 12px;
+			    margin: 10px 0;
+			}
+			.switch-row {
+			    display: flex;
+			    align-items: center;
+			    justify-content: space-between;
+			    gap: 10px;
+			    width: 100%;
+			    background: none;
+			    border: none;
+			    padding: 8px 0;
+			    cursor: pointer;
+			    text-align: left;
+			    color: #2c3e50;
+			}
+			.switch-row + .switch-row { border-top: 1px solid #dde8f3; }
+			.switch-label { font-weight: bold; font-size: 1em; }
+			.switch-label small { display: block; font-weight: normal; font-size: 0.78em; color: #777; margin-top: 2px; }
+			.switch {
+			    position: relative;
+			    flex-shrink: 0;
+			    width: 64px;
+			    height: 32px;
+			    border-radius: 16px;
+			    background: #c9d1d9;
+			    transition: background-color 0.2s;
+			}
+			.switch::after {
+			    content: "";
+			    position: absolute;
+			    top: 3px; left: 3px;
+			    width: 26px; height: 26px;
+			    border-radius: 50%;
+			    background: white;
+			    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+			    transition: transform 0.2s;
+			}
+			.switch-text {
+			    position: absolute;
+			    top: 0; bottom: 0; right: 8px;
+			    display: flex; align-items: center;
+			    font-size: 0.75em; font-weight: bold; color: white;
+			}
+			.switch-row[aria-checked="true"] .switch { background: #27ae60; }
+			.switch-row[aria-checked="true"] .switch::after { transform: translateX(32px); }
+			.switch-row[aria-checked="true"] .switch-text { right: auto; left: 9px; }
+			.switch-row:disabled { opacity: 0.45; cursor: default; }
+			.voice-hint { font-size: 0.82em; color: #b9770e; text-align: left; margin: 2px 0 8px; }
+
+			/* Spiel: Anzeige der Spracherkennung */
+			.listen-pill {
+			    display: block;
+			    margin: -6px auto 6px;
+			    max-width: 100%;
+			    border: none;
+			    border-radius: 16px;
+			    padding: 5px 14px;
+			    font-size: 0.85em;
+			    font-weight: bold;
+			    background: #ecf0f1;
+			    color: #7f8c8d;
+			    white-space: nowrap;
+			    overflow: hidden;
+			    text-overflow: ellipsis;
+			    cursor: pointer;
+			}
+			.listen-pill[data-state="on"] { background: #e8f8ef; color: #1e8449; animation: listenPulse 1.6s ease-in-out infinite; }
+			.listen-pill[data-state="paused"] { background: #fff3cd; color: #9a6b00; }
+			@keyframes listenPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(39,174,96,0.35); } 50% { box-shadow: 0 0 0 6px rgba(39,174,96,0); } }
+			.invisible { visibility: hidden; }
 
 			/* Bestätigungs-Fenster */
 			.modal-backdrop {
@@ -561,6 +651,18 @@
 			.modal-btn.yes { background: #ecf0f1; color: #c0392b; }
 
 			.hidden { display: none !important; }
+
+			/* iPhone quer: alles etwas kompakter, damit Wort und Knöpfe ohne Scrollen passen */
+			@media (max-height: 500px) {
+			    .container { padding: 12px 16px; }
+			    h1 { font-size: 1.7em; margin-top: 4px; }
+			    #screen-start h1 { margin-top: 8px; }
+			    #word-display { min-height: 80px; margin: 6px 0; }
+			    .progress-container { margin: 6px 0; height: 20px; }
+			    .btn-container { margin-top: 6px; }
+			    .action-btn { width: 70px; height: 70px; }
+			    .game-topbar { margin-bottom: 2px; }
+			}
 
 			@media (prefers-reduced-motion: reduce) {
 			    .rocket, .trail, .fuel-bar { transition-duration: 0.01s !important; }
@@ -623,6 +725,13 @@
 				>
 					Schwer
 				</button>
+				<button
+					class="diff-btn hidden"
+					id="btn-profi"
+					onclick="setDifficulty('profi')"
+				>
+					Profi
+				</button>
 			</div>
 			<p class="level-hint" id="level-hint"></p>
 
@@ -638,6 +747,18 @@
 					<div class="wheel" id="timer-wheel"></div>
 					<div class="wheel-band"></div>
 				</div>
+			</div>
+
+			<div class="voice-box">
+				<button class="switch-row" id="tg-listen" role="switch" aria-checked="false" onclick="toggleListen()">
+					<span class="switch-label">🎤 Spracherkennung<small>Richtig gelesene Wörter werden automatisch grün</small></span>
+					<span class="switch"><span class="switch-text">Aus</span></span>
+				</button>
+				<button class="switch-row" id="tg-tts" role="switch" aria-checked="true" onclick="toggleTts()">
+					<span class="switch-label">🔈 Vorlesen bei Falsch<small>Das Wort wird einmal richtig vorgesprochen</small></span>
+					<span class="switch"><span class="switch-text">An</span></span>
+				</button>
+				<p class="voice-hint hidden" id="voice-hint"></p>
 			</div>
 
 			<button class="main-btn start-btn" onclick="startGame('normal')">
@@ -676,6 +797,8 @@
 			</div>
 
 			<div id="word-display"><span id="word-text">Wort</span></div>
+
+			<button class="listen-pill invisible" id="listen-pill" data-state="wait" onclick="tapListenPill()">🎤</button>
 
 			<div class="timer-wrap hidden" id="timer-wrap">
 				<span id="timer-label">⏱️</span>
@@ -804,7 +927,10 @@
 				<button class="diff-btn" data-level="leicht" onclick="switchSettingsLevel('leicht')">Leicht</button>
 				<button class="diff-btn" data-level="mittel" onclick="switchSettingsLevel('mittel')">Mittel</button>
 				<button class="diff-btn" data-level="schwer" onclick="switchSettingsLevel('schwer')">Schwer</button>
+				<button class="diff-btn hidden" data-level="profi" onclick="switchSettingsLevel('profi')">Profi</button>
 			</div>
+			<p class="settings-derived hidden" id="settings-derived"></p>
+			<div id="settings-edit">
 			<p style="font-size: 0.9em; text-align: left;">
 				Wörter für <strong id="settings-level">Leicht</strong>
 				(mit Komma oder neuer Zeile trennen)<span id="settings-syl-hint"
@@ -826,6 +952,7 @@
 			></textarea>
 			<p class="word-count" id="word-count"></p>
 			<p class="word-count hidden" id="word-warning" style="color: #b9770e;"></p>
+			</div>
 			<p class="settings-error hidden" id="settings-error"></p>
 			<button
 				class="main-btn"
@@ -862,6 +989,28 @@
 				<button class="small-btn" onclick="resetJourney(this)">
 					Weltraum-Reise neu starten
 				</button>
+			</div>
+
+			<div class="settings-section">
+				<h3>💾 Sicherung</h3>
+				<small
+					>Safari löscht gespeicherte Daten (eigene Wörter, Bestenliste, Reise), wenn die Seite
+					etwa eine Woche lang nicht geöffnet wird. Mit einer Sicherung kannst du alles
+					wiederherstellen.</small
+				>
+				<button class="small-btn neutral" onclick="exportBackup(this)">
+					Sicherung speichern
+				</button>
+				<button class="small-btn neutral" id="btn-import" onclick="$('backup-file').click()">
+					Sicherung laden
+				</button>
+				<input
+					type="file"
+					id="backup-file"
+					accept=".json,application/json,text/plain"
+					class="hidden"
+					onchange="importBackup(this)"
+				/>
 			</div>
 
 			<button
@@ -923,10 +1072,14 @@
 			};
 
 			// Silbenwörter: Silben mit Bindestrich getrennt (Sprechsilben wie in der Fibel).
-			// Leicht und Mittel werden blau/rot eingefärbt, Schwer ganz in Schwarz.
+			// Leicht und Mittel werden blau/rot eingefärbt.
+			// Schwer hat keine eigene Liste: Es nimmt automatisch alle Wörter aus Leicht und Mittel – ganz in Schwarz.
+			// Profi enthält lange Wörter, ebenfalls in Schwarz.
+			// Eigene Namen (z. B. Kinder) am besten über ⚙️ ergänzen – dann stehen sie nur auf dem Gerät, nicht im Code.
 			const silbenConfig = {
 			    // 2 Silben, meist offene Silben
 			    leicht: [
+			        "Ma-ma", "Pa-pa",
 			        "So-fa", "Na-se", "Ro-se", "Ha-se", "Lö-we", "Ti-ger", "Ra-be", "Blu-me", "Son-ne",
 			        "Wol-ke", "Re-gen", "Ta-fel", "Ku-chen", "Ho-nig", "Ap-fel", "Bir-ne", "Kat-ze", "Pi-lot"
 			    ],
@@ -936,7 +1089,7 @@
 			        "A-na-nas", "Pin-gu-in", "Kro-ko-dil", "Ka-pi-tän", "Zi-tro-ne", "E-le-fant", "Ka-nin-chen", "Gi-tar-re", "Mo-tor-rad"
 			    ],
 			    // 3–4 Silben, mit schwierigeren Buchstabenfolgen (sch, schr, ck, ng …)
-			    schwer: [
+			    profi: [
 			        "Schmet-ter-ling", "Scho-ko-la-de", "Re-gen-bo-gen", "Ge-burts-tag", "Kar-tof-fel", "Schild-krö-te",
 			        "Feu-er-wehr", "Fle-der-maus", "Ku-schel-tier", "Hub-schrau-ber", "Erd-bee-re", "Zahn-bürs-te",
 			        "Schul-ran-zen", "Son-nen-blu-me", "Kin-der-gar-ten", "Wasch-ma-schi-ne", "Ta-schen-lam-pe", "Os-ter-ha-se"
@@ -947,6 +1100,7 @@
 			// EINSTELLUNGEN & KONSTANTEN
 			// =====================================================================
 			const LEVELS = ['leicht', 'mittel', 'schwer'];
+			const ALL_LEVELS = ['leicht', 'mittel', 'schwer', 'profi'];  // Profi gibt es nur bei Silben
 			const WORDLIST_VERSION = 2;
 			const WORDS_PER_ROUND = 10;
 			const MASTER_STREAK = 3;               // so oft hintereinander richtig = kein Knackwort mehr
@@ -985,6 +1139,8 @@
 			        desc: 'Wörter auf einen Blick erkennen',
 			        defaults: wordsConfig,
 			        listVersion: WORDLIST_VERSION,
+			        levels: ['leicht', 'mittel', 'schwer'],
+			        derived: {},
 			        keys: { pools: 'sichtwoerterPools', stats: 'sichtwoerterStatistik', timer: 'sichtwoerterTimer', level: 'sichtwoerterStufe' },
 			        boardPrefix: '',
 			        levelHints: { leicht: 'Kurze, häufige Wörter', mittel: 'Häufige Wörter und Tiere', schwer: 'Lange Wörter und Tiere' },
@@ -994,18 +1150,37 @@
 			    silben: {
 			        name: 'Silben',
 			        icon: '👏',
-			        desc: 'Lange Wörter Silbe für Silbe lesen',
+			        desc: 'Wörter Silbe für Silbe lesen',
 			        defaults: silbenConfig,
-			        listVersion: 1,
+			        listVersion: 2,
+			        levels: ['leicht', 'mittel', 'schwer', 'profi'],
+			        // Schwer = alle Wörter aus Leicht + Mittel (ohne eigene Liste)
+			        derived: { schwer: ['leicht', 'mittel'] },
+			        // Nur diese Stufen bekommen blaue/rote Silben
+			        colored: ['leicht', 'mittel'],
 			        keys: { pools: 'silbenPools', stats: 'silbenStatistik', timer: 'silbenTimer', level: 'silbenStufe' },
 			        boardPrefix: 'silben-',
-			        levelHints: { leicht: '2 Silben, blau und rot', mittel: '3 Silben, blau und rot', schwer: '3–4 Silben, ganz in Schwarz' },
+			        levelHints: {
+			            leicht: '2 Silben, blau und rot',
+			            mittel: '3 Silben, blau und rot',
+			            schwer: 'Wörter aus Leicht und Mittel, ganz in Schwarz',
+			            profi: 'Lange Wörter, ganz in Schwarz'
+			        },
 			        // Längere Wörter brauchen mehr Zeit
 			        vehicleLimits: { rocket: 45, jet: 65, racecar: 90 }
 			    }
 			};
 			function game() { return GAMES[currentGame]; }
 			function isSilben() { return currentGame === 'silben'; }
+			function isDerived(level) { return !!game().derived[level]; }
+			function editableLevels() { return game().levels.filter(level => !isDerived(level)); }
+			// Abgeleitete Stufen (Silben: Schwer) aus den anderen Listen zusammensetzen
+			function applyDerived(pools) {
+			    Object.entries(game().derived).forEach(([level, sources]) => {
+			        pools[level] = [...new Set(sources.flatMap(source => pools[source] || []))];
+			    });
+			    return pools;
+			}
 			// Silbenwort "Ba-na-ne" → ["Ba", "na", "ne"]
 			function syllables(word) { return String(word).split('-').filter(s => s.length > 0); }
 			// Fester, gut lesbarer Schriftstil für das Silben-Training
@@ -1017,7 +1192,7 @@
 			    '"Times New Roman", Times, serif',
 			    'Georgia, "Times New Roman", serif',
 			    'Verdana, Geneva, sans-serif',
-			    'Tahoma, Verdana, sans-serif',
+			    '"Avenir Next", Avenir, "Segoe UI", sans-serif',
 			    '"Trebuchet MS", Arial, sans-serif',
 			    'Futura, "Century Gothic", Arial, sans-serif',
 			    '"Gill Sans", "Gill Sans MT", Calibri, sans-serif',
@@ -1069,24 +1244,27 @@
 			// =====================================================================
 			// ZUSTAND
 			// =====================================================================
-			let currentGame = readJSON(KEYS.game, 'sicht');
-			if (!GAMES[currentGame]) currentGame = 'sicht';
-
-			function copyDefaults() {
-			    const d = game().defaults;
-			    return { leicht: [...d.leicht], mittel: [...d.mittel], schwer: [...d.schwer] };
-			}
-			let activePool = copyDefaults();
+			let currentGame = 'sicht';
+			let activePool = {};
 			let currentDifficulty = 'leicht';
 			let currentMode = 'normal';
 			let wordStats = {};
 			let timerSeconds = 0;
+			let journey = { fuel: 0, trips: 0 };
+			let options = {};
+
+			function copyDefaults() {
+			    const d = game().defaults;
+			    const pools = {};
+			    editableLevels().forEach(level => { pools[level] = [...d[level]]; });
+			    return applyDerived(pools);
+			}
 
 			// Stufe, Knackwort-Daten und Zeit pro Wort des aktuellen Spiels laden
 			function loadGameState() {
 			    const keys = game().keys;
 			    currentDifficulty = readJSON(keys.level, 'leicht');
-			    if (!LEVELS.includes(currentDifficulty)) currentDifficulty = 'leicht';
+			    if (!game().levels.includes(currentDifficulty)) currentDifficulty = 'leicht';
 
 			    wordStats = readJSON(keys.stats, {});
 			    if (!wordStats || typeof wordStats !== 'object' || Array.isArray(wordStats)) wordStats = {};
@@ -1094,13 +1272,23 @@
 			    timerSeconds = readJSON(keys.timer, 0);
 			    if (!TIMER_OPTIONS.includes(timerSeconds)) timerSeconds = 0;
 			}
-			loadGameState();
 
-			let journey = readJSON(KEYS.journey, { fuel: 0, trips: 0 });
-			if (!journey || !Number.isFinite(journey.fuel) || !Number.isFinite(journey.trips)) journey = { fuel: 0, trips: 0 };
+			// Alles laden, was beide Spiele gemeinsam haben (auch nach dem Laden einer Sicherung)
+			function loadAllState() {
+			    currentGame = readJSON(KEYS.game, 'sicht');
+			    if (!GAMES[currentGame]) currentGame = 'sicht';
+			    loadGameState();
+			    activePool = copyDefaults();
 
-			// Nur noch "sound" wird genutzt; Schrift & Farbe wechseln bei Sichtwörtern jetzt immer
-			let options = Object.assign({ sound: true }, readJSON(KEYS.options, {}));
+			    journey = readJSON(KEYS.journey, { fuel: 0, trips: 0 });
+			    if (!journey || !Number.isFinite(journey.fuel) || !Number.isFinite(journey.trips)) journey = { fuel: 0, trips: 0 };
+
+			    // sound = Töne, listen = Spracherkennung, tts = Vorlesen bei Falsch
+			    // (Schrift & Farbe wechseln bei Sichtwörtern jetzt immer – die alte Option "variety" wird ignoriert)
+			    const saved = readJSON(KEYS.options, {});
+			    options = Object.assign({ sound: true, listen: false, tts: true }, saved && typeof saved === 'object' ? saved : {});
+			}
+			loadAllState();
 
 			let wordsQueue = [];
 			let roundSize = WORDS_PER_ROUND;
@@ -1184,7 +1372,14 @@
 			// WÖRTER LADEN & SPEICHERN
 			// =====================================================================
 			function saveWords() {
-			    writeJSON(game().keys.pools, { version: game().listVersion, pools: activePool });
+			    // Abgeleitete Stufen werden nicht gespeichert, sondern immer neu zusammengesetzt
+			    const pools = {};
+			    editableLevels().forEach(level => { pools[level] = activePool[level]; });
+			    writeJSON(game().keys.pools, { version: game().listVersion, pools });
+			}
+
+			function validList(list) {
+			    return Array.isArray(list) ? list.filter(w => typeof w === 'string' && w.trim()) : [];
 			}
 
 			function loadWords() {
@@ -1194,12 +1389,27 @@
 
 			    if (data.version === g.listVersion && data.pools) {
 			        activePool = {};
-			        LEVELS.forEach(level => {
-			            const list = Array.isArray(data.pools[level])
-			                ? data.pools[level].filter(w => typeof w === 'string' && w.trim())
-			                : [];
+			        editableLevels().forEach(level => {
+			            const list = validList(data.pools[level]);
 			            activePool[level] = list.length >= 10 ? list : [...g.defaults[level]];
 			        });
+			        applyDerived(activePool);
+			    } else if (currentGame === 'silben' && data.version === 1 && data.pools) {
+			        // Silben-Version 1: Die langen Wörter aus "Schwer" wandern in die neue Stufe "Profi",
+			        // Leicht bekommt Ma-ma und Pa-pa dazu. Eigene Wörter bleiben erhalten.
+			        const old = data.pools;
+			        const leicht = validList(old.leicht);
+			        const mittel = validList(old.mittel);
+			        const profi = validList(old.schwer);
+			        activePool = {
+			            leicht: leicht.length >= 10 ? [...new Set([...g.defaults.leicht.slice(0, 2), ...leicht])] : [...g.defaults.leicht],
+			            mittel: mittel.length >= 10 ? mittel : [...g.defaults.mittel],
+			            profi: profi.length >= 10 ? profi : [...g.defaults.profi]
+			        };
+			        applyDerived(activePool);
+			        saveWords();
+			        moveBoard('silben-schwer', 'silben-profi');
+			        moveBoard('silben-knack-schwer', 'silben-knack-profi');
 			    } else if (currentGame === 'sicht') {
 			        // Altes Format der Sichtwörter: eigene Wörter behalten, neue Standardwörter ergänzen
 			        const oldPools = data.pools ? data.pools : data;
@@ -1213,6 +1423,16 @@
 			    } else {
 			        activePool = copyDefaults();
 			    }
+			}
+
+			// Bestenliste umbenennen (nur wenn das Ziel noch leer ist)
+			function moveBoard(fromKey, toKey) {
+			    const board = readJSON(KEYS.board, {});
+			    if (!board || typeof board !== 'object' || Array.isArray(board)) return;
+			    if (!Array.isArray(board[fromKey]) || board[toKey]) return;
+			    board[toKey] = board[fromKey];
+			    delete board[fromKey];
+			    writeJSON(KEYS.board, board);
 			}
 
 			// =====================================================================
@@ -1281,6 +1501,7 @@
 			    updateGameButtons();
 			    setDifficulty(currentDifficulty);
 			    updateSoundButton();
+			    updateVoiceUI();
 			    renderJourney($('journey-start'), journey.fuel, 0);
 			    setWheelToValue(timerSeconds);
 			}
@@ -1306,10 +1527,13 @@
 			}
 
 			function setDifficulty(diff) {
+			    if (!game().levels.includes(diff)) diff = 'leicht';
 			    currentDifficulty = diff;
 			    writeJSON(game().keys.level, diff);
-			    LEVELS.forEach(level => $('btn-' + level).classList.remove('active'));
-			    $('btn-' + diff).classList.add('active');
+			    ALL_LEVELS.forEach(level => {
+			        $('btn-' + level).classList.toggle('active', level === diff);
+			        $('btn-' + level).classList.toggle('hidden', !game().levels.includes(level));
+			    });
 			    $('level-hint').textContent = game().levelHints[diff];
 			    updateKnackButton();
 			}
@@ -1321,6 +1545,7 @@
 			    options.sound = !options.sound;
 			    writeJSON(KEYS.options, options);
 			    updateSoundButton();
+			    updateVoiceUI();
 			    if (options.sound) { initAudio(); playDing(); }
 			}
 			function updateSoundButton() {
@@ -1430,24 +1655,39 @@
 			    settingsLevel = level;
 			    document.querySelectorAll('#settings-tabs .diff-btn').forEach(btn => {
 			        btn.classList.toggle('active', btn.dataset.level === level);
+			        btn.classList.toggle('hidden', !game().levels.includes(btn.dataset.level));
 			    });
 			    $('settings-level').textContent = levelLabel(level);
-			    $('word-input').value = settingsDrafts[level];
-			    updateWordCount();
+			    // Abgeleitete Stufe (Silben: Schwer) hat keine eigene Liste → Erklärung statt Textfeld
+			    const derived = game().derived[level];
+			    $('settings-edit').classList.toggle('hidden', !!derived);
+			    $('settings-derived').classList.toggle('hidden', !derived);
+			    if (derived) {
+			        $('settings-derived').textContent =
+			            `${levelLabel(level)} nimmt automatisch alle Wörter aus ${derived.map(levelLabel).join(' und ')} ` +
+			            `(zurzeit ${activePool[level].length}) – ganz in Schwarz, ohne Farben. ` +
+			            `Neue Wörter trägst du in ${derived.map(levelLabel).join(' oder ')} ein.`;
+			    } else {
+			        $('word-input').value = settingsDrafts[level];
+			        updateWordCount();
+			    }
 			    renderKnackList();
 			}
 			function switchSettingsLevel(level) {
-			    settingsDrafts[settingsLevel] = $('word-input').value;
+			    if (!isDerived(settingsLevel)) settingsDrafts[settingsLevel] = $('word-input').value;
 			    $('settings-error').classList.add('hidden');
 			    showSettingsLevel(level);
 			}
 			function wordsLabel() { return isSilben() ? 'Silbenwörter' : 'Sichtwörter'; }
 			// Silbenwörter stehen je in einer eigenen Zeile, damit die Zeile nie mitten im Wort am Bindestrich umbricht
 			function wordsToText(words) { return words.join(isSilben() ? '\n' : ', '); }
+			function fillDrafts() {
+			    settingsDrafts = {};
+			    editableLevels().forEach(level => { settingsDrafts[level] = wordsToText(activePool[level]); });
+			}
 			function openSettings() {
 			    loadWords();
-			    settingsDrafts = {};
-			    LEVELS.forEach(level => { settingsDrafts[level] = wordsToText(activePool[level]); });
+			    fillDrafts();
 			    $('settings-error').classList.add('hidden');
 			    $('settings-title').textContent = `${wordsLabel()} anpassen ⚙️`;
 			    $('settings-syl-hint').classList.toggle('hidden', !isSilben());
@@ -1456,9 +1696,9 @@
 			    showScreen('screen-settings');
 			}
 			function saveSettings() {
-			    settingsDrafts[settingsLevel] = $('word-input').value;
+			    if (!isDerived(settingsLevel)) settingsDrafts[settingsLevel] = $('word-input').value;
 			    const newPools = {};
-			    for (const level of LEVELS) {
+			    for (const level of editableLevels()) {
 			        newPools[level] = parseWords(settingsDrafts[level]);
 			        if (newPools[level].length < 10) {
 			            showSettingsLevel(level);
@@ -1467,7 +1707,7 @@
 			            return;
 			        }
 			    }
-			    activePool = newPools;
+			    activePool = applyDerived(newPools);
 			    saveWords();
 			    goToMenu();
 			}
@@ -1481,7 +1721,7 @@
 			    showConfirm(`Standard-${wordsLabel()} für alle Schwierigkeiten wiederherstellen?`, 'Ja', 'Abbrechen', () => {
 			        storage.remove(game().keys.pools);
 			        activePool = copyDefaults();
-			        LEVELS.forEach(level => { settingsDrafts[level] = wordsToText(activePool[level]); });
+			        fillDrafts();
 			        $('settings-error').classList.add('hidden');
 			        showSettingsLevel(settingsLevel);
 			        markDone(btn);
@@ -1537,6 +1777,395 @@
 			}
 
 			// =====================================================================
+			// SPRACHE: SPRACHERKENNUNG (Zuhören) & VORLESEN
+			// =====================================================================
+			// Spracherkennung nutzt die Diktierfunktion des Geräts (Web Speech API).
+			// iPhone: nur in Safari über einen https-Link (z. B. GitHub Pages), nicht als Datei
+			// und nicht als Web-App vom Home-Bildschirm. Die Diktierfunktion muss eingeschaltet sein.
+			// Erkennt das Gerät das richtige Wort, zählt es automatisch als richtig.
+			// "Falsch" entscheidet weiterhin ein Erwachsener (Kinderstimmen werden oft falsch verstanden).
+			const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+			function speechSupported() { return !!SpeechRec && window.isSecureContext !== false; }
+			function isHomeScreenApp() {
+			    return window.navigator.standalone === true ||
+			        (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+			}
+			function ttsSupported() { return 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window; }
+
+			let voiceMessage = '';   // Hinweis im Menü, z. B. wenn das Mikrofon nicht erlaubt wurde
+
+			const listen = {
+			    rec: null,          // aktuelle Erkennungs-Sitzung (läuft über mehrere Wörter weiter)
+			    word: null,         // Wort, auf das gerade gehört wird (null = Gehörtes wird ignoriert)
+			    prefix: '',         // was vor dem Erscheinen des Wortes schon gehört wurde
+			    baseCount: 0,
+			    lastCombined: '',
+			    lastCount: 0,
+			    started: false,     // Sitzung läuft wirklich (onstart kam)
+			    paused: false,      // nach mehreren Fehlschlägen: wartet auf Antippen
+			    heard: '',          // zuletzt Gehörtes (klein angezeigt)
+			    startedAt: 0,
+			    quickEnds: 0,
+			    stalls: 0,
+			    timer: null,
+			    watchdog: null,
+			    lastAbortAt: 0
+			};
+
+			// Darf das Mikrofon gerade an sein? (Während der kurzen Rückmeldung nach einer Antwort
+			// läuft es weiter, damit das iPhone beim nächsten Wort nicht erst neu starten muss.)
+			function sessionAllowed() {
+			    return options.listen && speechSupported() && roundActive && !modalOpen &&
+			        !document.hidden && wordsQueue.length > 0 && !$('screen-game').classList.contains('hidden');
+			}
+
+			// Neues Wort erscheint: ab jetzt zählt nur, was danach gesagt wird
+			function startListening() {
+			    if (!sessionAllowed() || listen.paused || isProcessing) { updateListenPill(); return; }
+			    listen.word = wordsQueue[0];
+			    listen.prefix = listen.lastCombined;
+			    listen.baseCount = listen.lastCount;
+			    listen.heard = '';
+			    if (!listen.rec) {
+			        // Safari braucht nach einem Abbruch einen Moment, bevor eine neue Sitzung starten kann
+			        clearTimeout(listen.timer);
+			        const wait = performance.now() - listen.lastAbortAt < 300 ? 300 : 0;
+			        if (wait) listen.timer = setTimeout(beginSession, wait);
+			        else beginSession();
+			    }
+			    updateListenPill();
+			}
+
+			// Während der Rückmeldung (grün/rot): Mikrofon bleibt an, Gehörtes wird aber nicht gewertet
+			function muteListening() {
+			    listen.word = null;
+			}
+
+			function stopListening() {
+			    clearTimeout(listen.timer);
+			    detachSession();
+			    listen.word = null;
+			    updateListenPill();
+			}
+
+			// Laufende Sitzung beenden und ihre späten Ereignisse ignorieren
+			function detachSession() {
+			    clearTimeout(listen.watchdog);
+			    const rec = listen.rec;
+			    listen.rec = null;
+			    listen.started = false;
+			    if (rec) {
+			        listen.lastAbortAt = performance.now();
+			        try { rec.abort(); } catch (e) {}
+			    }
+			}
+
+			function resetListenTrouble() {
+			    listen.paused = false;
+			    listen.quickEnds = 0;
+			    listen.stalls = 0;
+			}
+
+			function beginSession() {
+			    clearTimeout(listen.timer);
+			    if (!sessionAllowed() || listen.paused || listen.rec) { updateListenPill(); return; }
+			    // Neue Sitzung = neue Ergebnisliste
+			    listen.prefix = '';
+			    listen.baseCount = 0;
+			    listen.lastCombined = '';
+			    listen.lastCount = 0;
+
+			    let rec;
+			    try {
+			        rec = new SpeechRec();
+			        rec.lang = 'de-DE';
+			        rec.continuous = true;
+			        rec.interimResults = true;
+			        rec.maxAlternatives = 5;
+			    } catch (e) {
+			        listen.paused = true; updateListenPill(); return;
+			    }
+			    const markStarted = () => {
+			        if (listen.rec !== rec) return;
+			        listen.started = true;
+			        listen.stalls = 0;
+			        clearTimeout(listen.watchdog);
+			        updateListenPill();
+			    };
+			    rec.onstart = markStarted;
+			    rec.onaudiostart = markStarted;
+			    rec.onresult = (event) => onSpeechResult(event, rec);
+			    rec.onerror = (event) => onSpeechError(event, rec);
+			    rec.onend = () => onSpeechEnd(rec);
+
+			    listen.rec = rec;
+			    listen.started = false;
+			    listen.startedAt = performance.now();
+			    try {
+			        rec.start();
+			    } catch (e) {
+			        listen.rec = null;
+			        listen.paused = true;
+			        updateListenPill();
+			        return;
+			    }
+			    // Wächter: Safari bleibt manchmal hängen (z. B. nach dem Vorlesen) – dann neu versuchen,
+			    // beim zweiten Mal auf Antippen warten
+			    listen.watchdog = setTimeout(() => {
+			        if (listen.rec !== rec || listen.started) return;
+			        detachSession();
+			        listen.stalls++;
+			        if (listen.stalls >= 2) { listen.paused = true; updateListenPill(); }
+			        else listen.timer = setTimeout(beginSession, 300);
+			    }, 3500);
+			    updateListenPill();
+			}
+
+			function onSpeechResult(event, rec) {
+			    if (listen.rec !== rec) return;
+			    const results = event.results;
+			    let combined = '';
+			    for (let i = 0; i < results.length; i++) {
+			        if (results[i] && results[i].length) combined += ' ' + results[i][0].transcript;
+			    }
+			    listen.lastCombined = combined;
+			    listen.lastCount = results.length;
+
+			    if (!listen.word || !roundActive || isProcessing || modalOpen || listen.word !== wordsQueue[0]) return;
+
+			    // Nur das Neue seit dem Erscheinen des Wortes betrachten
+			    const candidates = [];
+			    if (combined.startsWith(listen.prefix)) candidates.push(combined.slice(listen.prefix.length));
+			    let fresh = '';
+			    for (let i = listen.baseCount; i < results.length; i++) {
+			        const result = results[i];
+			        if (!result || !result.length) continue;
+			        fresh += ' ' + result[0].transcript;
+			        for (let j = 0; j < result.length; j++) candidates.push(result[j].transcript);
+			    }
+			    candidates.push(fresh);
+			    listen.heard = (candidates[0] || fresh).trim();
+			    updateListenPill();
+
+			    if (candidates.some(text => transcriptMatches(text, listen.word))) {
+			        listen.heard = '✓ ' + listen.heard;
+			        handleAnswer(true);
+			    }
+			}
+
+			function onSpeechError(event, rec) {
+			    if (listen.rec !== rec) return;
+			    const error = event && event.error;
+			    if (error === 'not-allowed' || error === 'service-not-allowed' || error === 'audio-capture') {
+			        // Mikrofon/Diktat nicht erlaubt → Spracherkennung ausschalten und im Menü erklären
+			        detachSession();
+			        options.listen = false;
+			        saveOptions();
+			        voiceMessage = error === 'audio-capture'
+			            ? 'Kein Mikrofon gefunden. Spracherkennung wurde ausgeschaltet.'
+			            : 'Spracherkennung ist nicht erlaubt. Am iPhone: Mikrofon für die Seite erlauben (aA-Menü in Safari → Website-Einstellungen) und unter Einstellungen → Allgemein → Tastatur die Diktierfunktion einschalten.';
+			        updateVoiceUI();
+			        updateListenPill();
+			    }
+			    // 'no-speech', 'network', 'aborted' …: onend folgt, dort wird neu gestartet
+			}
+
+			function onSpeechEnd(rec) {
+			    if (listen.rec !== rec) return;
+			    clearTimeout(listen.watchdog);
+			    listen.rec = null;
+			    listen.started = false;
+			    if (!sessionAllowed() || listen.paused) { updateListenPill(); return; }
+			    // Endet die Sitzung immer wieder sofort, nicht endlos neu starten
+			    const duration = performance.now() - listen.startedAt;
+			    listen.quickEnds = duration < 1500 ? listen.quickEnds + 1 : 0;
+			    if (listen.quickEnds >= 4) { listen.paused = true; updateListenPill(); return; }
+			    listen.timer = setTimeout(beginSession, 250);
+			    updateListenPill();
+			}
+
+			// Kleine Anzeige im Spiel: hört zu / pausiert (antippen) / zuletzt gehört
+			function updateListenPill() {
+			    const pill = $('listen-pill');
+			    if (!pill) return;
+			    const show = options.listen && speechSupported() && roundActive;
+			    pill.classList.toggle('invisible', !show);
+			    if (!show) return;
+			    let text, state;
+			    if (listen.paused) {
+			        text = '🎤 Pause – zum Zuhören antippen'; state = 'paused';
+			    } else if (listen.rec && listen.started) {
+			        text = listen.heard ? `🎤 „${shorten(listen.heard, 26)}“` : '🎤 Ich höre zu …'; state = 'on';
+			    } else {
+			        text = listen.heard ? `🎤 „${shorten(listen.heard, 26)}“` : '🎤 …'; state = 'wait';
+			    }
+			    pill.textContent = text;
+			    pill.dataset.state = state;
+			}
+			function shorten(text, max) { return text.length > max ? '…' + text.slice(-max) : text; }
+
+			function tapListenPill() {
+			    if (!options.listen) return;
+			    resetListenTrouble();
+			    if (!listen.rec) beginSession();   // Antippen = Benutzergeste, damit darf Safari das Mikrofon neu starten
+			    if (!isProcessing) startListening();
+			}
+
+			// ---------- Wortvergleich ----------
+			// Lautschlüssel: gleich klingende Schreibweisen werden gleich (Henry/Henri, Sophia/Sofia,
+			// das/dass, mehr/Meer, war/wahr, viel/fiel …)
+			function phoneticKey(text) {
+			    return String(text).toLowerCase()
+			        .replace(/ß/g, 'ss')
+			        .replace(/ph/g, 'f')
+			        .replace(/th/g, 't')
+			        .replace(/v/g, 'f')
+			        .replace(/y/g, 'i')
+			        .replace(/[^a-zäöü]/g, '')
+			        .replace(/ie/g, 'i')
+			        .replace(/([aeiouäöü])h(?![aeiouäöü])/g, '$1')
+			        .replace(/dt/g, 't')
+			        .replace(/(.)\1+/g, '$1')
+			        .replace(/d$/, 't')
+			        .replace(/b$/, 'p')
+			        .replace(/g$/, 'k');
+			}
+			const NUMBER_WORDS = { '1': 'ein', '2': 'zwei', '3': 'drei', '4': 'vier', '5': 'fünf', '10': 'zehn' };
+			// Passt das Gehörte zum Wort? Auch langsam in Silben gelesen ("Ba – na – ne") zählt.
+			function transcriptMatches(transcript, word) {
+			    const target = phoneticKey(String(word).replace(/-/g, ''));
+			    if (!target) return false;
+			    const tokens = String(transcript)
+			        .split(/[\s\-–—.,!?;:"„“'()]+/)
+			        .map(t => NUMBER_WORDS[t] || t)
+			        .map(phoneticKey)
+			        .filter(Boolean);
+			    for (let i = 0; i < tokens.length; i++) {
+			        let joined = '';
+			        for (let j = i; j < Math.min(tokens.length, i + 6); j++) {
+			            joined += tokens[j];
+			            if (joined === target) return true;
+			            if (joined.length > target.length) break;
+			        }
+			    }
+			    return false;
+			}
+
+			// ---------- Vorlesen ----------
+			let ttsVoice = null;
+			let speechToken = 0;
+			function pickVoice() {
+			    if (!ttsSupported()) return;
+			    const voices = window.speechSynthesis.getVoices() || [];
+			    const german = voices.filter(v => /^de[-_]/i.test(v.lang) || v.lang === 'de');
+			    ttsVoice = german.find(v => /^de[-_]DE/i.test(v.lang) && v.localService) ||
+			        german.find(v => /^de[-_]DE/i.test(v.lang)) || german[0] || null;
+			}
+			if (ttsSupported()) {
+			    pickVoice();
+			    try { window.speechSynthesis.addEventListener('voiceschanged', pickVoice); } catch (e) {}
+			}
+			function ttsWanted() { return options.tts && options.sound && ttsSupported(); }
+			function cancelSpeech() {
+			    speechToken++;
+			    if (ttsSupported() && (window.speechSynthesis.speaking || window.speechSynthesis.pending)) {
+			        try { window.speechSynthesis.cancel(); } catch (e) {}
+			    }
+			}
+			// Liest das Wort (ohne Bindestriche) einmal langsam vor und ruft danach done() auf
+			function speakWord(word, done) {
+			    cancelSpeech();
+			    const token = speechToken;
+			    let finished = false;
+			    let fallback = null;
+			    const finish = () => {
+			        if (finished) return;
+			        finished = true;
+			        clearTimeout(fallback);
+			        if (token === speechToken) done();
+			    };
+			    try {
+			        const utterance = new SpeechSynthesisUtterance(String(word).replace(/-/g, ''));
+			        utterance.lang = 'de-DE';
+			        if (ttsVoice) utterance.voice = ttsVoice;
+			        utterance.rate = 0.8;
+			        utterance.onend = finish;
+			        utterance.onerror = finish;
+			        // Falls "onend" ausbleibt (kommt auf iPhones vor), trotzdem weitermachen
+			        fallback = setTimeout(finish, 3500);
+			        window.speechSynthesis.speak(utterance);
+			    } catch (e) {
+			        finish();
+			    }
+			}
+
+			// ---------- Schalter im Menü ----------
+			function saveOptions() { writeJSON(KEYS.options, options); }
+
+			function toggleListen() {
+			    if (!speechSupported()) { updateVoiceUI(); return; }
+			    options.listen = !options.listen;
+			    voiceMessage = '';
+			    saveOptions();
+			    if (options.listen) probeMicrophone();
+			    updateVoiceUI();
+			}
+			function toggleTts() {
+			    if (!ttsSupported()) return;
+			    options.tts = !options.tts;
+			    saveOptions();
+			    updateVoiceUI();
+			    if (options.tts && options.sound) {
+			        // Beim Einschalten kurz vorsprechen (entsperrt auf dem iPhone auch die Sprachausgabe)
+			        speakWord('Hallo', () => {});
+			    }
+			}
+			// Beim Einschalten gleich nach dem Mikrofon fragen – nicht erst mitten in der Runde
+			function probeMicrophone() {
+			    let rec;
+			    try {
+			        rec = new SpeechRec();
+			        rec.lang = 'de-DE';
+			        rec.onstart = () => { try { rec.abort(); } catch (e) {} };
+			        rec.onerror = (event) => {
+			            if (event.error === 'not-allowed' || event.error === 'service-not-allowed' || event.error === 'audio-capture') {
+			                options.listen = false;
+			                saveOptions();
+			                voiceMessage = event.error === 'audio-capture'
+			                    ? 'Kein Mikrofon gefunden.'
+			                    : 'Spracherkennung ist nicht erlaubt. Am iPhone: Mikrofon für die Seite erlauben (aA-Menü in Safari → Website-Einstellungen) und unter Einstellungen → Allgemein → Tastatur die Diktierfunktion einschalten.';
+			                updateVoiceUI();
+			            }
+			        };
+			        rec.start();
+			        setTimeout(() => { try { rec.abort(); } catch (e) {} }, 4000);
+			    } catch (e) {}
+			}
+
+			function setSwitch(id, on, disabled) {
+			    const el = $(id);
+			    el.setAttribute('aria-checked', on ? 'true' : 'false');
+			    el.disabled = !!disabled;
+			    el.querySelector('.switch-text').textContent = on ? 'An' : 'Aus';
+			}
+			function updateVoiceUI() {
+			    setSwitch('tg-listen', options.listen && speechSupported(), !speechSupported());
+			    setSwitch('tg-tts', options.tts && ttsSupported(), !ttsSupported());
+			    let hint = voiceMessage;
+			    if (!hint && !speechSupported()) {
+			        hint = window.isSecureContext === false
+			            ? 'Spracherkennung geht nur über einen https-Link (z. B. GitHub Pages), nicht als Datei.'
+			            : 'Spracherkennung wird von diesem Browser nicht unterstützt. Am iPhone: Safari benutzen.';
+			    } else if (!hint && options.listen && isHomeScreenApp()) {
+			        hint = 'Vom Home-Bildschirm aus klappt die Spracherkennung am iPhone meist nicht. Öffne die Seite direkt in Safari.';
+			    } else if (!hint && options.tts && !options.sound) {
+			        hint = 'Vorlesen ist stumm, solange die Töne (🔇) aus sind.';
+			    }
+			    $('voice-hint').textContent = hint;
+			    $('voice-hint').classList.toggle('hidden', !hint);
+			}
+
+			// =====================================================================
 			// SPIEL
 			// =====================================================================
 			function shuffleArray(array) {
@@ -1551,6 +2180,9 @@
 
 			function startGame(mode) {
 			    initAudio();
+			    requestPersistentStorage();
+			    cancelSpeech();
+			    resetListenTrouble();
 			    loadWords();
 			    mode = mode || 'normal';
 
@@ -1639,9 +2271,10 @@
 
 			    fitWordToBox(display, textEl, currentWordSize);
 			    startWordTimer();
+			    startListening();
 			}
 
-			// Silben: in Leicht und Mittel abwechselnd blau/rot (erste Silbe blau), in Schwer alles schwarz
+			// Silben: in Leicht und Mittel abwechselnd blau/rot (erste Silbe blau), in Schwer und Profi alles schwarz
 			function showSilbenWord(textEl, word) {
 			    textEl.style.fontFamily = SILBEN_STYLE.font;
 			    textEl.style.color = SILBEN_STYLE.color;
@@ -1650,7 +2283,7 @@
 			    currentWordSize = SILBEN_STYLE.size;
 
 			    const parts = syllables(word);
-			    const colored = currentDifficulty !== 'schwer';
+			    const colored = (game().colored || []).includes(currentDifficulty);
 			    textEl.textContent = '';
 			    parts.forEach((syl, i) => {
 			        const span = document.createElement('span');
@@ -1676,19 +2309,21 @@
 
 			// Nach der Rückmeldung (grün/rot) kurz warten, dann das nächste Wort zeigen.
 			// Ist in dem Moment das Menü-Fenster offen, wartet das Spiel, bis "Weiterspielen" gedrückt wird.
-			function scheduleNext(updateQueue) {
+			function scheduleNext(updateQueue, delay = 600) {
 			    pendingTimeout = setTimeout(() => {
 			        pendingTimeout = null;
 			        updateQueue();
 			        if (modalOpen) { deferredNext = true; return; }
 			        nextWord();
-			    }, 600);
+			    }, delay);
 			}
 
 			function handleAnswer(isCorrect) {
 			    if (!roundActive || isProcessing || modalOpen || wordsQueue.length === 0) return;
 			    isProcessing = true;
 			    stopWordTimer();
+			    muteListening();
+			    const answeredAt = performance.now();
 
 			    const word = wordsQueue[0];
 			    // Schnappschuss für "Rückgängig"
@@ -1724,14 +2359,25 @@
 			        gameContainer.classList.add('flash-wrong');
 			        updateProgress();
 			        // Falsch gelesenes Wort wandert ans Ende der Warteschlange
-			        scheduleNext(() => wordsQueue.push(wordsQueue.shift()));
+			        const requeue = () => wordsQueue.push(wordsQueue.shift());
+			        if (ttsWanted()) {
+			            // Wort einmal richtig vorlesen, solange es noch zu sehen ist – danach geht es weiter.
+			            // Mikrofon solange aus, damit es die Vorlese-Stimme nicht als Antwort wertet.
+			            stopListening();
+			            speakWord(word, () => {
+			                if (!roundActive) return;
+			                scheduleNext(requeue, Math.max(250, 600 - (performance.now() - answeredAt)));
+			            });
+			        } else {
+			            scheduleNext(requeue);
+			        }
 			    }
 			}
 
 			function nextWord() {
 			    if (wordsQueue.length > 0) {
-			        showWord();
 			        isProcessing = false;
+			        showWord();
 			    } else {
 			        endGame();
 			    }
@@ -1742,6 +2388,7 @@
 			    if (pendingTimeout) { clearTimeout(pendingTimeout); pendingTimeout = null; }
 			    deferredNext = false;
 			    stopWordTimer();
+			    cancelSpeech();
 
 			    const snap = undoStack.pop();
 			    wordsQueue = snap.queue;
@@ -1765,13 +2412,14 @@
 			    if (modalOpen) return;
 			    pauseWordTimer();
 			    clockPause();
+			    stopListening();
 			    showConfirm('Runde abbrechen und zurück zum Menü?', 'Ja, zum Menü', 'Weiterspielen',
 			        () => { abortRound(); goToMenu(); },
 			        () => {
 			            if (!roundActive) return;
 			            clockResume();
 			            if (deferredNext) { deferredNext = false; nextWord(); }
-			            else if (!isProcessing) resumeWordTimer();
+			            else if (!isProcessing) { resumeWordTimer(); startListening(); }
 			        }
 			    );
 			}
@@ -1781,6 +2429,8 @@
 			    isProcessing = false;
 			    deferredNext = false;
 			    stopWordTimer();
+			    stopListening();
+			    cancelSpeech();
 			    clockPause();
 			    if (pendingTimeout) { clearTimeout(pendingTimeout); pendingTimeout = null; }
 			    undoStack = [];
@@ -1849,9 +2499,10 @@
 			    if (document.hidden) {
 			        pauseWordTimer();
 			        clockPause();
+			        stopListening();
 			    } else if (roundActive && !modalOpen) {
 			        clockResume();
-			        if (!isProcessing) resumeWordTimer();
+			        if (!isProcessing) { resumeWordTimer(); startListening(); }
 			    }
 			});
 
@@ -1873,6 +2524,7 @@
 			    isProcessing = false;
 			    deferredNext = false;
 			    stopWordTimer();
+			    stopListening();
 			    clockPause();
 			    undoStack = [];
 			    updateUndoButton();
@@ -2208,6 +2860,112 @@
 			        setTimeout(() => { confetti.remove(); }, (duration + delay) * 1000);
 			    }
 			}
+
+			// =====================================================================
+			// SICHERUNG (gegen das automatische Löschen durch Safari)
+			// =====================================================================
+			const BACKUP_APP = 'lese-meister';
+			function backupKeys() {
+			    const keys = new Set(Object.values(KEYS));
+			    Object.values(GAMES).forEach(g => Object.values(g.keys).forEach(k => keys.add(k)));
+			    return [...keys];
+			}
+			function exportBackup(btn) {
+			    const data = {};
+			    backupKeys().forEach(key => {
+			        const value = storage.get(key);
+			        if (value !== null && value !== undefined) data[key] = value;
+			    });
+			    const now = new Date();
+			    const payload = JSON.stringify({ app: BACKUP_APP, version: 1, created: now.toISOString(), data }, null, 1);
+			    const pad = n => String(n).padStart(2, '0');
+			    const name = `lese-meister-sicherung-${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}.json`;
+			    try {
+			        const url = URL.createObjectURL(new Blob([payload], { type: 'application/json' }));
+			        const link = document.createElement('a');
+			        link.href = url;
+			        link.download = name;
+			        document.body.appendChild(link);
+			        link.click();
+			        link.remove();
+			        setTimeout(() => URL.revokeObjectURL(url), 20000);
+			        markDone(btn);
+			    } catch (e) {
+			        showConfirm('Die Sicherung konnte nicht gespeichert werden.', 'OK', 'Schließen');
+			    }
+			}
+			function importBackup(input) {
+			    const file = input.files && input.files[0];
+			    input.value = '';
+			    if (!file) return;
+			    const reader = new FileReader();
+			    reader.onload = () => {
+			        let backup = null;
+			        try { backup = JSON.parse(reader.result); } catch (e) {}
+			        if (!backup || backup.app !== BACKUP_APP || !backup.data || typeof backup.data !== 'object') {
+			            showConfirm('Das ist keine Lese-Meister-Sicherung.', 'OK', 'Schließen');
+			            return;
+			        }
+			        const date = new Date(backup.created);
+			        const when = isNaN(date) ? '' : ` vom ${date.toLocaleDateString('de-DE')}`;
+			        showConfirm(`Sicherung${when} laden? Die jetzigen Daten auf diesem Gerät werden ersetzt.`, 'Ja, laden', 'Abbrechen', () => {
+			            const allowed = backupKeys();
+			            allowed.forEach(key => storage.remove(key));
+			            Object.entries(backup.data).forEach(([key, value]) => {
+			                if (allowed.includes(key) && typeof value === 'string') storage.set(key, value);
+			            });
+			            loadAllState();
+			            loadWords();
+			            openSettings();
+			            markDone($('btn-import'));
+			        });
+			    };
+			    reader.readAsText(file);
+			}
+			// Bittet den Browser, die Daten dauerhaft zu behalten (wird nicht überall gewährt)
+			let persistRequested = false;
+			function requestPersistentStorage() {
+			    if (persistRequested) return;
+			    persistRequested = true;
+			    try {
+			        if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+			    } catch (e) {}
+			}
+
+			// =====================================================================
+			// IPHONE / SAFARI
+			// =====================================================================
+			// Ohne diesen (leeren) Touch-Listener zeigt Safari auf dem iPhone keinen :active-Druckeffekt
+			document.addEventListener('touchstart', () => {}, { passive: true });
+
+			// App-Symbol für "Zum Home-Bildschirm" und Tab-Symbol (wird hier gezeichnet, keine Extra-Datei nötig)
+			(function addAppIcon() {
+			    try {
+			        const canvas = document.createElement('canvas');
+			        canvas.width = canvas.height = 180;
+			        const ctx = canvas.getContext('2d');
+			        ctx.fillStyle = '#FF8C00';
+			        ctx.fillRect(0, 0, 180, 180);
+			        ctx.fillStyle = '#ffffff';
+			        ctx.beginPath();
+			        if (ctx.roundRect) ctx.roundRect(22, 34, 136, 112, 22); else ctx.rect(22, 34, 136, 112);
+			        ctx.fill();
+			        ctx.font = 'bold 64px Verdana, Arial, sans-serif';
+			        ctx.textAlign = 'center';
+			        ctx.textBaseline = 'middle';
+			        ctx.fillStyle = '#1565C0';
+			        ctx.fillText('A', 70, 92);
+			        ctx.fillStyle = '#D32F2F';
+			        ctx.fillText('b', 112, 92);
+			        const url = canvas.toDataURL('image/png');
+			        ['apple-touch-icon', 'icon'].forEach(rel => {
+			            const link = document.createElement('link');
+			            link.rel = rel;
+			            link.href = url;
+			            document.head.appendChild(link);
+			        });
+			    } catch (e) {}
+			})();
 
 			// =====================================================================
 			// TASTATUR (praktisch am Laptop/Tablet mit Tastatur)
