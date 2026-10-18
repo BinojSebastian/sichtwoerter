@@ -11,7 +11,7 @@
 		<!-- Sicherheit: Die App lädt nur eigene Dateien und baut keine Verbindungen zu fremden Servern auf -->
 		<meta
 			http-equiv="Content-Security-Policy"
-			content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"
+			content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'"
 		/>
 		<meta name="referrer" content="no-referrer" />
 		<meta name="apple-mobile-web-app-title" content="Lese-Meister" />
@@ -1718,15 +1718,17 @@
 
 			    // sound = Töne, listen = Spracherkennung, autoWrong = Falsch automatisch, tts = Vorlesen bei Falsch,
 			    // sylColors = Silben in den Weltall-Texten blau/rot, textSize = Schriftgröße der Texte (m/l/xl),
-			    // tapRead = Wort in den Texten antippen = vorlesen
+			    // tapRead = Wort in den Texten antippen = vorlesen, stimme = aufgenommene Stimme (z. B. 'eva')
+			    // oder 'geraet' (Stimme des iPads)
 			    // (Schrift & Farbe wechseln bei Sichtwörtern jetzt immer – die alte Option "variety" wird ignoriert)
 			    const saved = readJSON(KEYS.options, {});
 			    options = Object.assign(
-			        { sound: true, listen: false, autoWrong: true, tts: true, sylColors: true, textSize: 'm', tapRead: true },
+			        { sound: true, listen: false, autoWrong: true, tts: true, sylColors: true, textSize: 'm', tapRead: true, stimme: 'eva' },
 			        isPlainObject(saved) ? saved : {}
 			    );
 			    ['sound', 'listen', 'autoWrong', 'tts', 'sylColors', 'tapRead'].forEach(key => { options[key] = options[key] === true; });
 			    if (!own(TEXT_SIZES, options.textSize)) options.textSize = 'm';
+			    if (typeof options.stimme !== 'string' || !/^[a-z0-9-]{1,30}$/.test(options.stimme)) options.stimme = 'eva';
 			}
 			loadAllState();
 
@@ -2237,15 +2239,66 @@
 			        <h3>🔈 Vorlesen</h3>
 			        ${switchHTML('tg-tts', '🔈 Vorlesen bei Falsch', 'Sichtwörter und Silben: Das Wort wird einmal richtig vorgesprochen', options.tts, 'toggleTts()')}
 			        ${switchHTML('tg-tapread', '👆 Wort antippen = vorlesen', 'Weltall-Texte: Ein angetipptes Wort wird vorgelesen', options.tapRead, 'toggleTapRead()')}
+			        <div class="set-row">
+			            <span class="label">🗣️ Stimme</span>
+			            <span class="segmented" id="seg-voice"></span>
+			        </div>
+			        <p class="info" id="voice-pick-info"></p>
 			        <p class="info">Vorlesen klappt nur, wenn die Töne an sind.</p>
 			    </div>`;
 			    updateVoiceUI();
+			    loadVoiceManifest();
+			}
+			// Name des Geräts für den Knopf "Stimme des Geräts"
+			function deviceName() {
+			    const ua = navigator.userAgent || '';
+			    if (/iPhone/.test(ua)) return 'iPhone';
+			    if (/iPad/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)) return 'iPad';
+			    return 'Gerät';
+			}
+			// Auswahl der Stimme: aufgenommene Stimmen aus daten/stimmen.json und die Stimme des Geräts
+			function updateVoicePicker() {
+			    const box = $('seg-voice');
+			    if (!box) return;
+			    const m = voicePacks.manifest;
+			    const voices = (m ? m.stimmen : []).map(v => ({ id: v.id, name: v.name || v.id }));
+			    if (ttsSupported() || !voices.length) voices.push({ id: DEVICE_VOICE, name: deviceName() });
+			    const current = recordedVoice() ? recordedVoice().id : DEVICE_VOICE;
+			    box.innerHTML = voices.map(v =>
+			        `<button data-voice="${escapeHTML(v.id)}" class="${v.id === current ? 'active' : ''}" onclick="chooseVoice('${escapeHTML(v.id)}')">${escapeHTML(v.name)}</button>`).join('');
+			    const info = $('voice-pick-info');
+			    const pack = recordedVoice() && voicePacks.packs[recordedVoice().id];
+			    let text;
+			    if (!m) text = voicePacks.manifestLoad ? '⏳ Stimmen werden geladen …'
+			        : 'Die aufgenommenen Stimmen konnten nicht geladen werden (kein Internet?) – solange liest das ' + deviceName() + ' vor.';
+			    else if (!m.stimmen.length) text = 'Es sind keine aufgenommenen Stimmen da – das ' + deviceName() + ' liest vor.';
+			    else if (current === DEVICE_VOICE) text = 'Die Stimme des ' + deviceName() + 's klingt oft blechern. ' +
+			        (m.stimmen.length > 1 ? 'Die aufgenommenen Stimmen klingen natürlicher.' : 'Die aufgenommene Stimme klingt natürlicher.');
+			    else if (pack && !pack.data) text = '⏳ Stimme wird geladen …';
+			    else text = 'Antippen = Hörprobe. Wörter, die nur auf diesem Gerät in der Bibliothek ergänzt wurden, liest das ' + deviceName() + ' vor.';
+			    info.textContent = text;
+			}
+			function chooseVoice(id) {
+			    options.stimme = id;
+			    saveOptions();
+			    updateVoicePicker();
+			    if (!options.sound) { toast('🔇 Die Töne sind aus'); return; }
+			    initAudio();   // im Antippen freischalten, sonst bleibt die Aufnahme auf dem iPhone stumm
+			    const probe = (voicePacks.manifest && voicePacks.manifest.probe) || 'Rakete';
+			    const voice = recordedVoice();
+			    if (!voice) { speakWord(probe, () => {}); return; }
+			    loadPack(voice).then(data => {
+			        updateVoicePicker();
+			        if (data && options.stimme === id) speakWord(probe, () => {});
+			    });
+			    updateVoicePicker();
 			}
 			function toggleTapRead() {
-			    if (!ttsSupported()) return;
+			    if (!canSpeak()) return;
 			    options.tapRead = !options.tapRead;
 			    saveOptions();
 			    updateVoiceUI();
+			    preloadVoice();
 			    if (options.tapRead && options.sound) speakWord('Rakete', () => {});
 			}
 
@@ -3006,9 +3059,109 @@
 			    pickVoice();
 			    try { window.speechSynthesis.addEventListener('voiceschanged', pickVoice); } catch (e) {}
 			}
-			function ttsWanted() { return options.tts && options.sound && ttsSupported(); }
+			// Vorlesen geht mit den aufgenommenen Stimmen (Web Audio) oder mit der Stimme des Geräts
+			function canSpeak() { return ttsSupported() || !!(window.AudioContext || window.webkitAudioContext); }
+			function ttsWanted() { return options.tts && options.sound && canSpeak(); }
+
+			// ---------- Aufgenommene Stimmen ----------
+			// daten/stimmen.json sagt, wo jedes Wort in daten/stimme-<id>.bin liegt (MP3-Aufnahmen
+			// hintereinander, erzeugt mit werkzeug/stimmen-aufnehmen.py). Ein Wort, das nicht
+			// aufgenommen ist (z. B. selbst in der Bibliothek ergänzt), liest die Stimme des Geräts.
+			const DEVICE_VOICE = 'geraet';
+			const voicePacks = { manifest: null, manifestLoad: null, packs: {}, clips: new Map(), source: null };
+			function loadVoiceManifest() {
+			    if (voicePacks.manifest) return Promise.resolve(voicePacks.manifest);
+			    if (!voicePacks.manifestLoad) {
+			        voicePacks.manifestLoad = fetch('daten/stimmen.json', { cache: 'no-cache' })
+			            .then(r => r.ok ? r.json() : null)
+			            .then(m => {
+			                const ok = m && Array.isArray(m.stimmen) && m.stimmen.filter(v =>
+			                    v && typeof v.id === 'string' && typeof v.datei === 'string' && isPlainObject(v.eintraege));
+			                voicePacks.manifest = ok && ok.length ? { probe: String(m.probe || ''), stimmen: ok } : { probe: '', stimmen: [] };
+			                updateVoicePicker();
+			                return voicePacks.manifest;
+			            })
+			            .catch(() => { voicePacks.manifestLoad = null; return null; });   // später nochmal versuchen
+			    }
+			    return voicePacks.manifestLoad;
+			}
+			function recordedVoice() {
+			    if (!voicePacks.manifest || options.stimme === DEVICE_VOICE) return null;
+			    return voicePacks.manifest.stimmen.find(v => v.id === options.stimme) || voicePacks.manifest.stimmen[0] || null;
+			}
+			// Paket einer Stimme laden (ein Mal; danach kommt es aus dem Zwischenspeicher von Safari)
+			function loadPack(voice) {
+			    const known = voicePacks.packs[voice.id];
+			    if (known) return known.promise;
+			    const entry = { data: null, promise: null };
+			    entry.promise = fetch('daten/' + encodeURIComponent(voice.datei) + '?v=' + encodeURIComponent(voice.version || ''))
+			        .then(r => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
+			        .then(buf => { entry.data = buf; return buf; })
+			        .catch(() => { delete voicePacks.packs[voice.id]; return null; });
+			    voicePacks.packs[voice.id] = entry;
+			    return entry.promise;
+			}
+			// Schon beim Start im Hintergrund laden, damit das erste Vorlesen nicht warten muss
+			function preloadVoice() {
+			    if (!(options.tts || options.tapRead) || options.stimme === DEVICE_VOICE) return;
+			    loadVoiceManifest().then(() => { const v = recordedVoice(); if (v) loadPack(v); });
+			}
+			setTimeout(preloadVoice, 1200);
+			function clipKey(voice, word) {
+			    const w = String(word).replace(/-/g, '').trim();
+			    if (own(voice.eintraege, w)) return w;
+			    const lower = w.toLowerCase();
+			    return own(voice.eintraege, lower) ? lower : null;
+			}
+			function decodeClip(data) {
+			    return new Promise((resolve, reject) => {
+			        // ältere Safari-Versionen kennen nur die Variante mit Rückruf
+			        const p = audioCtx.decodeAudioData(data, resolve, reject);
+			        if (p && p.then) p.then(resolve, reject);
+			    });
+			}
+			// Spielt die Aufnahme ab. Antwortet mit false, wenn es keine gibt (dann liest das Gerät).
+			async function playRecorded(word, token, onEnd) {
+			    const voice = recordedVoice();
+			    if (!voice) return false;
+			    const key = clipKey(voice, word);
+			    if (!key) return false;
+			    const pack = voicePacks.packs[voice.id];
+			    if (!pack || !pack.data) { loadPack(voice); return false; }   // noch nicht geladen
+			    initAudio();
+			    if (!audioCtx) return false;
+			    if (audioCtx.state !== 'running') {
+			        // nach Mikrofon oder Sperrbildschirm braucht Safari einen Moment
+			        await Promise.race([audioCtx.resume().catch(() => {}), new Promise(r => setTimeout(r, 400))]);
+			        if (audioCtx.state !== 'running') return false;
+			    }
+			    const id = voice.id + '|' + key;
+			    let buffer = voicePacks.clips.get(id);
+			    if (!buffer) {
+			        const [pos, len] = voice.eintraege[key];
+			        try { buffer = await decodeClip(pack.data.slice(pos, pos + len)); } catch (e) { return false; }
+			        // nur die zuletzt gehörten Wörter entpackt behalten (spart Speicher auf älteren iPads)
+			        if (voicePacks.clips.size >= 60) voicePacks.clips.delete(voicePacks.clips.keys().next().value);
+			        voicePacks.clips.set(id, buffer);
+			    }
+			    if (token !== speechToken) return true;   // inzwischen abgebrochen
+			    const source = audioCtx.createBufferSource();
+			    source.buffer = buffer;
+			    source.connect(audioCtx.destination);
+			    source.onended = () => { if (voicePacks.source === source) voicePacks.source = null; onEnd(); };
+			    voicePacks.source = source;
+			    source.start();
+			    return true;
+			}
+
 			function cancelSpeech() {
 			    speechToken++;
+			    if (voicePacks.source) {
+			        const source = voicePacks.source;
+			        voicePacks.source = null;
+			        source.onended = null;
+			        try { source.stop(); } catch (e) {}
+			    }
 			    if (ttsSupported() && (window.speechSynthesis.speaking || window.speechSynthesis.pending)) {
 			        try { window.speechSynthesis.cancel(); } catch (e) {}
 			    }
@@ -3026,6 +3179,15 @@
 			        clearTimeout(fallback);
 			        if (token === speechToken) done();
 			    };
+			    // Falls kein "Ende" gemeldet wird (kommt auf iPhones vor), trotzdem weitermachen
+			    fallback = setTimeout(finish, 3500);
+			    playRecorded(word, token, finish).then(played => {
+			        if (played || token !== speechToken) return;
+			        speakWithDevice(word, finish);
+			    }, () => { if (token === speechToken) speakWithDevice(word, finish); });
+			}
+			function speakWithDevice(word, finish) {
+			    if (!ttsSupported()) { finish(); return; }
 			    try {
 			        const utterance = new SpeechSynthesisUtterance(String(word).replace(/-/g, ''));
 			        utterance.lang = 'de-DE';
@@ -3033,8 +3195,6 @@
 			        utterance.rate = 0.8;
 			        utterance.onend = finish;
 			        utterance.onerror = finish;
-			        // Falls "onend" ausbleibt (kommt auf iPhones vor), trotzdem weitermachen
-			        fallback = setTimeout(finish, 3500);
 			        window.speechSynthesis.speak(utterance);
 			    } catch (e) {
 			        finish();
@@ -3058,10 +3218,11 @@
 			    updateVoiceUI();
 			}
 			function toggleTts() {
-			    if (!ttsSupported()) return;
+			    if (!canSpeak()) return;
 			    options.tts = !options.tts;
 			    saveOptions();
 			    updateVoiceUI();
+			    preloadVoice();
 			    if (options.tts && options.sound) {
 			        // Beim Einschalten kurz vorsprechen (entsperrt auf dem iPhone auch die Sprachausgabe)
 			        speakWord('Hallo', () => {});
@@ -3104,8 +3265,9 @@
 			    setSwitch('tg-listen', options.listen && speechSupported(), !speechSupported());
 			    setSwitch('tg-autowrong', options.autoWrong, false);
 			    $('tg-autowrong').classList.toggle('hidden', !(options.listen && speechSupported()));
-			    setSwitch('tg-tts', options.tts && ttsSupported(), !ttsSupported());
-			    setSwitch('tg-tapread', options.tapRead && ttsSupported(), !ttsSupported());
+			    setSwitch('tg-tts', options.tts && canSpeak(), !canSpeak());
+			    setSwitch('tg-tapread', options.tapRead && canSpeak(), !canSpeak());
+			    updateVoicePicker();
 			    let hint = voiceMessage;
 			    if (!hint && !speechSupported()) {
 			        hint = window.isSecureContext === false
@@ -3140,6 +3302,7 @@
 			    requestPersistentStorage();
 			    cancelSpeech();
 			    unlockSpeechOutput();
+			    preloadVoice();
 			    resetListenTrouble();
 			    mode = mode || 'normal';
 
@@ -4089,6 +4252,8 @@
 			    cancelSpeech();
 			    Object.assign(reader, { active: true, text, page, phase: 'read', q: 0, tries: 0, fuel: 0, firstTry: 0, busy: false });
 			    requestPersistentStorage();
+			    initAudio();
+			    preloadVoice();
 			    $('text-chapter').textContent = `Kapitel ${text.nr} · ${text.titel}`;
 			    showScreen('screen-text');
 			    keepScreenOn();
@@ -4106,7 +4271,7 @@
 			    $('page-dots').innerHTML = dots.join('');
 			}
 			function tapHint() {
-			    if (!options.tapRead || !ttsSupported()) return '';
+			    if (!options.tapRead || !canSpeak()) return '';
 			    return options.sound ? '👆 Ein Wort antippen – dann wird es vorgelesen.' : '👆 Zum Vorlesen eines Wortes die Töne einschalten.';
 			}
 			// Eine Seite im Stil der Erstlese-Sachbücher: Überschrift, Bild mit Bildtext, Text in Sinnschritten,
@@ -4175,7 +4340,7 @@
 			    if (!el || !reader.active || modalOpen) return;
 			    el.classList.add('tapped');
 			    setTimeout(() => el.classList.remove('tapped'), 900);
-			    if (!options.tapRead || !ttsSupported()) return;
+			    if (!options.tapRead || !canSpeak()) return;
 			    if (!options.sound) { toast('🔇 Die Töne sind aus'); return; }
 			    speakWord(el.dataset.w, () => {});
 			}
@@ -4234,7 +4399,7 @@
 			        btn.onclick = () => chooseAnswer(btn, answer.right);
 			        box.appendChild(btn);
 			    });
-			    $('tap-hint').textContent = options.tapRead && ttsSupported() && options.sound ? '👆 Wörter in der Frage kann man antippen.' : '';
+			    $('tap-hint').textContent = options.tapRead && canSpeak() && options.sound ? '👆 Wörter in der Frage kann man antippen.' : '';
 			    $('screen-text').scrollTop = 0;
 			}
 			function chooseAnswer(btn, right) {
@@ -4616,7 +4781,7 @@
 			// automatisch erkannten Falsch (ohne Antippen) still.
 			let ttsUnlocked = false;
 			function unlockSpeechOutput() {
-			    if (ttsUnlocked || !ttsWanted()) return;
+			    if (ttsUnlocked || !ttsWanted() || !ttsSupported()) return;
 			    ttsUnlocked = true;
 			    try {
 			        const utterance = new SpeechSynthesisUtterance(' ');

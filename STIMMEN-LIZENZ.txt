@@ -1,0 +1,14 @@
+Lese-Meister – aufgenommene Stimme
+==================================
+
+Die Datei daten/stimme-eva.bin enthält Aufnahmen einzelner Wörter, die mit einem
+freien Sprachmodell offline erzeugt wurden (Werkzeug: sherpa-onnx,
+Skript: werkzeug/stimmen-aufnehmen.py). Sie sind für die private,
+nicht-kommerzielle Nutzung in dieser Lern-App gedacht.
+
+Eva (Deutsch, weiblich)
+  Modell: Piper-Stimme de_DE-eva_k-x_low (Rhasspy/Piper)
+  Daten:  The M-AILABS Speech Dataset, Copyright (c) 2017–2019 M-AILABS,
+          https://www.caito.de/2019/01/03/the-m-ailabs-speech-dataset/
+          (Die Sprachaufnahmen stammen ursprünglich von LibriVox-Freiwilligen und sind gemeinfrei.)
+  Lizenz: Bedingungen siehe die Seite des Datensatzes.

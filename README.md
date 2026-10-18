@@ -23,6 +23,10 @@ daten/sichtwoerter.js    ← Wortlisten Sichtwörter
 daten/silben.js          ← Wortlisten Silben
 daten/weltall-texte.js   ← Weltall-Kapitel mit Lesequiz und Silben-Ausnahmen
 daten/bilder.js          ← Zeichnungen für die Weltall-Texte (Planeten, Rakete, Raumstation …)
+daten/stimmen.json       ← Verzeichnis der aufgenommenen Wörter (welches Wort wo im Stimmenpaket liegt)
+daten/stimme-eva.bin     ← Stimmenpaket Eva (alle Wörter als MP3 hintereinander)
+STIMMEN-LIZENZ.txt       ← Herkunft und Lizenz der Stimme
+werkzeug/                ← Skripte zum Neu-Aufnehmen der Stimmen (für die App nicht nötig)
 icon-180.png             ← App-Symbol (Rakete) für den Home-Bildschirm
 preview.webp             ← Vorschaubild
 LERNINHALTE.md           ← Woher die Fakten in den Weltall-Texten stammen
@@ -119,12 +123,48 @@ Hat eine Daten-Datei einen Tippfehler (meist ein fehlendes Komma oder Anführung
 Startseite einen roten Hinweis mit **Dateiname und Zeile**. Die anderen Spiele funktionieren weiter.
 Datei korrigieren, hochladen, Seite neu laden.
 
+## Vorlesen mit aufgenommenen Stimmen
+
+Statt der blechernen iPad-Stimme liest die App mit der freien KI-Stimme **Eva** vor (weiblich).
+Unter **⚙️ › Sprache & Töne › Stimme** wechselt man zwischen Eva und der Stimme des iPads –
+Antippen spielt eine Hörprobe.
+
+Jedes Wort wurde im Satz „Das nächste Wort, bitte: …“ gesprochen und dann herausgeschnitten, weil die
+Stimmen einzeln gesprochene Wörter oft verschlucken. Danach wurde jede Aufnahme mit Spracherkennung geprüft
+und ein undeutliches Wort bis zu dreimal neu aufgenommen. (Ausprobiert wurden auch Kerstin, Dii, Ramona und
+Thorsten. Kerstin und Dii verschlucken oft Laute – Dii etwa das l in „Helm“, „Wald“, „halb“ –, und
+Thorsten beginnt ausgeschnittene Wörter oft mit einem b-artigen Laut. Eva war mit Abstand am deutlichsten.)
+
+- Aufgenommen ist jedes Wort aus `daten/sichtwoerter.js`, `daten/silben.js` und `daten/weltall-texte.js`
+  (Text, Überschriften, Bildtexte, „Hast du gewusst …?“, Sprechblasen und Lesequiz).
+- **Neue Wörter liest das iPad vor**, bis sie aufgenommen sind. Das gilt auch für Wörter, die nur auf dem
+  iPad in der Bibliothek ergänzt wurden. Es bricht also nichts, wenn man Wörter ändert.
+- Das Stimmenpaket wird beim ersten Öffnen einmal geladen (etwa 2 MB), danach hält Safari es
+  im Zwischenspeicher. Ohne Internet liest das iPad vor.
+- Auf dem iPhone ist die aufgenommene Stimme stumm, wenn der Stumm-Schalter an der Seite eingeschaltet ist
+  (wie die Klänge bei Richtig und Falsch).
+
+**Neue Wörter aufnehmen:** Claude bitten, die Stimmen neu aufzunehmen (die Skripte liegen in `werkzeug/`).
+Danach `daten/stimmen.json` und `daten/stimme-eva.bin` hochladen – immer beide zusammen, sonst passen
+Verzeichnis und Paket nicht zueinander.
+
+Am eigenen Computer geht es auch selbst (Python 3, ffmpeg und Node.js nötig):
+
+```
+pip install sherpa-onnx numpy
+python3 werkzeug/stimmen-aufnehmen.py --app . --modelle <Ordner mit den Stimmen> --whisper <Ordner mit Whisper>
+```
+
+Die Stimme gibt es bei sherpa-onnx auf GitHub (Release „tts-models“: `vits-piper-de_DE-eva_k-x_low`), die
+Spracherkennung zum Prüfen im Release „asr-models“ (`sherpa-onnx-whisper-small`), jeweils entpacken. Wörter, die eine Stimme falsch ausspricht (z. B. „ISS“
+oder Jahreszahlen), stehen oben im Skript in der Liste `AUSSPRACHE`.
+
 ## Einstellungen (⚙️)
 
 | Bereich | Inhalt |
 |---|---|
 | 🎮 Spiel | Zeit pro Wort (je Spiel), Silben farbig und Schriftgröße für die Weltall-Texte |
-| 🎤 Sprache & Töne | Töne, Spracherkennung, Falsch automatisch, Vorlesen bei Falsch, Wort antippen = vorlesen |
+| 🎤 Sprache & Töne | Töne, Spracherkennung, Falsch automatisch, Vorlesen bei Falsch, Wort antippen = vorlesen, Stimme |
 | 📚 Bibliothek | Wortlisten ansehen und ändern (gilt nur auf diesem Gerät), Übersicht der Weltall-Kapitel |
 | 🚀 Fortschritt | Weltraum-Reise, Knackwörter, Bestenlisten, gelesene Kapitel zurücksetzen |
 | 💾 Sichern | Sicherung speichern und laden |
